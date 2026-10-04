@@ -14,7 +14,7 @@
           <Icon icon="material-symbols-light:close-rounded" width="22" height="22"/>
         </div>
       </div>
-      <div class="container">
+      <div class="container" :class="{ 'pgp-on': form.pgpEncrypt && form.receiveEmail.length }">
         <el-input-tag  @add-tag="addTagChange" tag-type="primary" @input="inputChange" size="default" v-model="form.receiveEmail" >
           <template #prefix>
             <div class="item-title" >{{ $t('recipient') }}</div>
@@ -43,8 +43,16 @@
             </div>
           </template>
         </el-input-tag>
+        <div v-if="form.pgpEncrypt && form.receiveEmail.length" class="pgp-status">
+          <div v-for="email in form.receiveEmail" :key="email" class="pgp-status-item">
+            <span class="pgp-email">{{ email }}</span>
+            <Icon v-if="pgpKeyStatus[email] === true" icon="mdi:check-circle" class="pgp-ok" width="16" height="16"/>
+            <Icon v-else-if="pgpKeyStatus[email] === false" icon="mdi:close-circle" class="pgp-fail" width="16" height="16"/>
+            <Icon v-else icon="mdi:loading" class="pgp-loading" width="16" height="16"/>
+          </div>
+        </div>
         <el-input v-model="form.subject" :placeholder="t('subject')" />
-        <tinyEditor :def-value="defValue" ref="editor" @change="change" @focus="focusChange" />
+        <tinyEditor :def-value="defValue" ref="editor" :pgp-active="form.pgpEncrypt" @change="change" @focus="focusChange" @pgp-toggle="togglePgp" />
         <div class="button-item">
           <div class="att-add" @click="chooseFile">
             <Icon icon="iconamoon:attachment-fill" width="24" height="24"/>
@@ -94,7 +102,7 @@
 </template>
 <script setup>
 import tinyEditor from '@/components/tiny-editor/index.vue'
-import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed} from "vue";
+import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, computed, watch} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
 import {emailSend} from "@/request/email.js";
@@ -114,6 +122,7 @@ import dayjs from "dayjs";
 import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
+import {pgpKeyStatus as queryPgpKeyStatus} from "@/request/pgp.js";
 
 defineExpose({
   open,
@@ -157,6 +166,7 @@ const form = reactive({
   emailId: 0,
   attachments: [],
   draftId: null,
+  pgpEncrypt: false,
 })
 
 const selectRecipientList = ref([])
@@ -288,6 +298,44 @@ function chooseFile() {
   }
 }
 
+const pgpKeyStatus = ref({})
+const pgpKeyCache = {}
+
+function togglePgp() {
+  form.pgpEncrypt = !form.pgpEncrypt
+  if (form.pgpEncrypt) {
+    refreshPgpStatus()
+  }
+}
+
+async function refreshPgpStatus() {
+  const jobs = []
+  for (const email of form.receiveEmail) {
+    if (pgpKeyCache[email] !== undefined) {
+      pgpKeyStatus.value[email] = pgpKeyCache[email]
+      continue
+    }
+    pgpKeyStatus.value[email] = undefined
+    jobs.push(
+        queryPgpKeyStatus(email).then(data => {
+          const found = !!data?.found
+          pgpKeyCache[email] = found
+          pgpKeyStatus.value[email] = found
+        }).catch(() => {
+          pgpKeyCache[email] = false
+          pgpKeyStatus.value[email] = false
+        })
+    )
+  }
+  await Promise.all(jobs)
+}
+
+watch(() => form.receiveEmail, () => {
+  if (form.pgpEncrypt) {
+    refreshPgpStatus()
+  }
+}, {deep: true})
+
 async function sendEmail() {
 
   if (form.receiveEmail.length === 0) {
@@ -337,6 +385,19 @@ async function sendEmail() {
       plain: true,
     })
     return
+  }
+
+  if (form.pgpEncrypt) {
+    await refreshPgpStatus()
+    const missing = form.receiveEmail.filter(email => pgpKeyStatus.value[email] !== true)
+    if (missing.length > 0) {
+      ElMessage({
+        message: t('pgpKeyNotFound', {msg: missing.join(', ')}),
+        type: 'error',
+        plain: true,
+      })
+      return
+    }
   }
 
   percentMessage = ElMessage({
@@ -417,6 +478,8 @@ function resetForm() {
   form.sendType = ''
   form.emailId = 0
   form.draftId = null
+  form.pgpEncrypt = false
+  pgpKeyStatus.value = {}
   backReply.content = ''
   backReply.subject = ''
   backReply.receiveEmail = []
@@ -694,6 +757,50 @@ function close() {
       grid-template-rows: auto auto 1fr auto;
       gap: 15px;
 
+      &.pgp-on {
+        grid-template-rows: auto auto auto 1fr auto;
+      }
+
+      .pgp-status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        font-size: 12px;
+
+        .pgp-status-item {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+
+          .pgp-email {
+            color: var(--regular-text-color);
+            max-width: 220px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+          }
+
+          .pgp-ok {
+            color: var(--el-color-success);
+          }
+
+          .pgp-fail {
+            color: var(--el-color-danger);
+          }
+
+          .pgp-loading {
+            color: var(--el-text-color-placeholder);
+            animation: pgp-spin 1s linear infinite;
+          }
+        }
+      }
+
+      @keyframes pgp-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
       .item-title {
       }
 
@@ -703,11 +810,13 @@ function close() {
 
         .att-add {
           cursor: pointer;
+          align-self: center;
         }
 
         .att-clear {
           cursor: pointer;
           margin-left: 10px;
+          align-self: center;
         }
 
         .att-list {

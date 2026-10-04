@@ -35,6 +35,12 @@
           <el-button type="primary" @click="openPasskey">{{$t('passkeyManage')}}</el-button>
         </div>
       </div>
+      <div class="item">
+        <div>{{$t('pgpPrivateKey')}}</div>
+        <div>
+          <el-button type="primary" @click="openPgpKey">{{$t('pgpManageKey')}}</el-button>
+        </div>
+      </div>
     </div>
     <div class="language">
       <div class="title">{{$t('language')}}</div>
@@ -80,6 +86,29 @@
         <el-button type="primary" :loading="passkeyAddLoading" @click="addPasskey">{{$t('passkeyAdd')}}</el-button>
       </template>
     </el-dialog>
+    <el-dialog v-model="pgpKeyShow" :title="$t('pgpManageKey')" width="440">
+      <div v-loading="pgpKeyLoading" class="pgp-key-box">
+        <template v-if="pgpKeyInfo">
+          <div class="pgp-key-row">
+            <span class="pgp-key-label">{{ $t('pgpFingerprint') }}</span>
+            <span class="pgp-fingerprint">{{ pgpKeyInfo.fingerprint }}</span>
+          </div>
+          <div class="pgp-key-row">
+            <span class="pgp-key-label">{{ $t('pgpUserId') }}</span>
+            <span>{{ pgpKeyInfo.userIDs.join(', ') }}</span>
+          </div>
+          <div class="pgp-key-row" v-if="pgpKeyInfo.needsPassphrase">
+            <el-tag type="warning">{{ $t('pgpNeedPassphrase') }}</el-tag>
+          </div>
+          <el-button type="danger" @click="delPgpKey" style="margin-top: 12px">{{ $t('pgpDeleteKey') }}</el-button>
+        </template>
+        <template v-else>
+          <div class="pgp-tip">{{ $t('pgpImportTip') }}</div>
+          <el-input v-model="pgpArmored" type="textarea" :rows="8" :placeholder="$t('pgpKeyPlaceholder')" class="pgp-textarea"/>
+          <el-button type="primary" :loading="pgpImportLoading" @click="importPgpKey" style="margin-top: 12px; width: 100%">{{ $t('pgpImportKey') }}</el-button>
+        </template>
+      </div>
+    </el-dialog>
   </div>
 </template>
 <script setup>
@@ -92,6 +121,7 @@ import {useAccountStore} from "@/store/account.js";
 import {useI18n} from "vue-i18n";
 import {useSettingStore} from "@/store/setting.js";
 import {startRegistration, browserSupportsWebAuthn} from '@simplewebauthn/browser';
+import {parsePrivateKey, savePrivateKey, removePrivateKey, privateKeyInfo} from "@/utils/pgp-utils.js";
 import {passkeyList, passkeyDelete, passkeyRegisterOptions, passkeyRegisterVerify} from "@/request/passkey.js";
 import {tzDayjs} from "@/utils/day.js";
 
@@ -270,6 +300,78 @@ function delPasskey(item) {
   })
 }
 
+const pgpKeyShow = ref(false)
+const pgpKeyLoading = ref(false)
+const pgpImportLoading = ref(false)
+const pgpKeyInfo = ref(null)
+const pgpArmored = ref('')
+
+function openPgpKey() {
+  pgpKeyShow.value = true
+  refreshPgpKeyInfo()
+}
+
+async function refreshPgpKeyInfo() {
+  pgpKeyLoading.value = true
+  try {
+    pgpKeyInfo.value = await privateKeyInfo()
+  } catch (e) {
+    console.warn('pgp key info fail', e)
+    pgpKeyInfo.value = null
+  } finally {
+    pgpKeyLoading.value = false
+  }
+}
+
+async function importPgpKey() {
+  if (pgpImportLoading.value) return
+  if (!pgpArmored.value.includes('PGP PRIVATE KEY')) {
+    ElMessage({
+      message: t('pgpInvalidKey'),
+      type: 'error',
+      plain: true,
+    })
+    return
+  }
+  pgpImportLoading.value = true
+  try {
+    const info = await parsePrivateKey(pgpArmored.value)
+    savePrivateKey(info.armored)
+    pgpArmored.value = ''
+    ElMessage({
+      message: t('pgpImportSuccess'),
+      type: 'success',
+      plain: true,
+    })
+    refreshPgpKeyInfo()
+  } catch (e) {
+    console.warn('pgp import fail', e)
+    ElMessage({
+      message: t('pgpInvalidKey'),
+      type: 'error',
+      plain: true,
+    })
+  } finally {
+    pgpImportLoading.value = false
+  }
+}
+
+function delPgpKey() {
+  ElMessageBox.confirm(t('pgpDeleteConfirm'), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(() => {
+    removePrivateKey()
+    pgpKeyInfo.value = null
+    ElMessage({
+      message: t('pgpDeleteSuccess'),
+      type: 'success',
+      plain: true,
+    })
+  })
+}
+
 function submitPwd() {
   if (setPwdLoading.value) return
 
@@ -348,6 +450,9 @@ function submitPwd() {
       grid-template-columns: 50px 1fr;
       gap: 140px;
       position: relative;
+      > div:first-child {
+        white-space: nowrap;
+      }
       .user-name {
         display: grid;
         grid-template-columns: auto 1fr;
@@ -437,6 +542,42 @@ function submitPwd() {
           font-size: 12px;
           color: var(--regular-text-color);
         }
+      }
+    }
+  }
+
+  .pgp-key-box {
+    min-height: 120px;
+
+    .pgp-tip {
+      font-size: 13px;
+      color: var(--regular-text-color);
+      margin-bottom: 10px;
+      line-height: 1.6;
+    }
+
+    .pgp-textarea {
+      :deep(.el-textarea__inner) {
+        font-family: monospace;
+        font-size: 12px;
+      }
+    }
+
+    .pgp-key-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      align-items: baseline;
+
+      .pgp-key-label {
+        color: var(--regular-text-color);
+        white-space: nowrap;
+      }
+
+      .pgp-fingerprint {
+        font-family: monospace;
+        word-break: break-all;
       }
     }
   }

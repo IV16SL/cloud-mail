@@ -4,7 +4,8 @@ const KvConst = {
 	SEND_DAY_COUNT: 'send_day_count:',
 	ANALYSIS_ECHARTS: 'analysis_echarts:',
 	PUBLIC_KEY: "public_key:",
-	PASSKEY_CHALLENGE: 'passkey-challenge:'
+	PASSKEY_CHALLENGE: 'passkey-challenge:',
+	PGP_KEY: 'pgp-key:'
 }
 
 export default KvConst;

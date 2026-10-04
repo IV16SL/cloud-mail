@@ -23,6 +23,7 @@ import domainUtils from '../utils/domain-uitls';
 import account from "../entity/account";
 import { att } from '../entity/att';
 import telegramService from './telegram-service';
+import pgpService from './pgp-service';
 
 const emailService = {
 
@@ -258,6 +259,7 @@ const emailService = {
 			text, //邮件纯文本
 			content, //邮件内容
 			subject, //邮件标题
+			pgpEncrypt, //是否 PGP 加密
 			attachments = [] //附件
 		} = params;
 
@@ -357,6 +359,19 @@ const emailService = {
 
 		let sendResult = {};
 
+		// PGP 加密（仅外发时生效，站内直投不加密）
+		let sendText = text;
+		let sendHtml = html;
+		let sendAttachments = [...imageDataList, ...attachments];
+
+		if (pgpEncrypt && !allInternal) {
+			const plainText = text || pgpService.htmlToText(html);
+			const pgpResult = await pgpService.encryptOutgoing(c, receiveEmail, plainText, sendAttachments);
+			sendText = pgpResult.text;
+			sendHtml = undefined;
+			sendAttachments = pgpResult.attachments;
+		}
+
 		//存在站外邮箱时，如果配置了 Cloudflare Email Service 就优先使用，否则使用 Resend
 		if (!allInternal) {
 
@@ -366,9 +381,9 @@ const emailService = {
 					accountEmail: accountRow.email,
 					receiveEmail,
 					subject,
-					text,
-					html,
-					attachments: [...imageDataList, ...attachments],
+					text: sendText,
+					html: sendHtml,
+					attachments: sendAttachments,
 					sendType,
 					messageId: emailRow.messageId
 				});
@@ -378,9 +393,9 @@ const emailService = {
 					accountEmail: accountRow.email,
 					receiveEmail,
 					subject,
-					text,
-					html,
-					attachments: [...imageDataList, ...attachments],
+					text: sendText,
+					html: sendHtml,
+					attachments: sendAttachments,
 					sendType,
 					messageId: emailRow.messageId
 				});

@@ -32,8 +32,36 @@ const dbInit = {
 		await this.v3_1DB(c);
 		await this.v3_2DB(c);
 		await this.v3_3DB(c);
+		await this.v3_4DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
+	},
+
+	async v3_4DB(c) {
+		try {
+			await c.env.db.prepare(`
+				CREATE TABLE IF NOT EXISTS passkey (
+					passkey_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					credential_id TEXT NOT NULL UNIQUE,
+					public_key TEXT NOT NULL,
+					counter INTEGER NOT NULL DEFAULT 0,
+					transports TEXT DEFAULT '[]',
+					name TEXT DEFAULT '',
+					create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+					last_used_time DATETIME,
+					is_del INTEGER NOT NULL DEFAULT 0
+				)
+			`).run();
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
+
+		try {
+			await c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_passkey_user_id ON passkey(user_id)`).run();
+		} catch (e) {
+			console.warn(`跳过字段：${e.message}`);
+		}
 	},
 
 	async v3_3DB(c) {

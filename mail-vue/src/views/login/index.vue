@@ -44,6 +44,10 @@
           <el-button class="btn" type="primary" @click="submit" :loading="loginLoading"
           >{{ $t('loginBtn') }}
           </el-button>
+          <el-button v-if="passkeySupported" class="btn" style="margin-top: 10px" @click="passkeyLogin" :loading="passkeyLoading">
+            <Icon icon="mdi:fingerprint" width="18" height="18" style="margin-right: 10px" />
+            {{ $t('passkeyLogin') }}
+          </el-button>
           <el-button v-for="p in oauthProviders" :key="p.key" class="btn" style="margin-top: 10px" @click="oauthLogin(p.key)">
             <el-avatar v-if="p.iconType === 'image'" :src="p.icon" :size="18" style="margin-right: 10px" />
             <Icon v-else :icon="p.icon" width="18" height="18" style="margin-right: 10px" />
@@ -168,6 +172,8 @@ import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
 import {oauthBindUser, oauthLinuxDoLogin, oauthGithubLogin, oauthGoogleLogin} from "@/request/ouath.js";
+import {startAuthentication, browserSupportsWebAuthn} from '@simplewebauthn/browser';
+import {passkeyLoginOptions, passkeyLoginVerify} from "@/request/passkey.js";
 
 const {t} = useI18n();
 const accountStore = useAccountStore();
@@ -176,6 +182,8 @@ const uiStore = useUiStore();
 const settingStore = useSettingStore();
 const route = useRoute();
 const loginLoading = ref(false)
+const passkeyLoading = ref(false)
+const passkeySupported = browserSupportsWebAuthn()
 const bindLoading = ref(false)
 const oauthLoading = ref(false);
 const showBindForm = ref(false);
@@ -436,6 +444,27 @@ const submit = () => {
   }).finally(() => {
     loginLoading.value = false
   })
+}
+
+async function passkeyLogin() {
+
+  if (passkeyLoading.value) return
+
+  passkeyLoading.value = true
+
+  try {
+    const {options, challengeId} = await passkeyLoginOptions()
+    const assertion = await startAuthentication({optionsJSON: options})
+    const data = await passkeyLoginVerify(assertion, challengeId)
+    await saveToken(data.token)
+  } catch (e) {
+    // 用户主动取消（NotAllowedError）不打扰，其他错误由 axios 拦截器统一提示
+    if (e?.name !== 'NotAllowedError') {
+      console.warn('passkey login fail', e)
+    }
+  } finally {
+    passkeyLoading.value = false
+  }
 }
 
 async function saveToken(token) {

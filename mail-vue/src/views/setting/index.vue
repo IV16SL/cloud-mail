@@ -29,6 +29,12 @@
           <el-button type="primary" @click="pwdShow = true">{{$t('changePwdBtn')}}</el-button>
         </div>
       </div>
+      <div class="item">
+        <div>{{$t('passkey')}}</div>
+        <div>
+          <el-button type="primary" @click="openPasskey">{{$t('passkeyManage')}}</el-button>
+        </div>
+      </div>
     </div>
     <div class="language">
       <div class="title">{{$t('language')}}</div>
@@ -58,6 +64,22 @@
         <el-button type="primary" :loading="setPwdLoading" @click="submitPwd">{{$t('save')}}</el-button>
       </div>
     </el-dialog>
+    <el-dialog v-model="passkeyShow" :title="$t('passkeyManage')" width="420">
+      <div class="passkey-list" v-loading="passkeyLoading">
+        <el-empty v-if="!passkeyLoading && passkeys.length === 0" :description="$t('passkeyEmpty')"/>
+        <div v-for="item in passkeys" :key="item.passkeyId" class="passkey-item">
+          <div class="passkey-info">
+            <div class="passkey-name">{{ item.name || $t('passkey') }}</div>
+            <div class="passkey-time">{{ $t('passkeyCreatedAt') }}: {{ formatTime(item.createTime) }}</div>
+            <div class="passkey-time" v-if="item.lastUsedTime">{{ $t('passkeyLastUsed') }}: {{ formatTime(item.lastUsedTime) }}</div>
+          </div>
+          <el-button type="danger" size="small" @click="delPasskey(item)">{{$t('delete')}}</el-button>
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="primary" :loading="passkeyAddLoading" @click="addPasskey">{{$t('passkeyAdd')}}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 <script setup>
@@ -69,6 +91,9 @@ import {accountSetName} from "@/request/account.js";
 import {useAccountStore} from "@/store/account.js";
 import {useI18n} from "vue-i18n";
 import {useSettingStore} from "@/store/setting.js";
+import {startRegistration, browserSupportsWebAuthn} from '@simplewebauthn/browser';
+import {passkeyList, passkeyDelete, passkeyRegisterOptions, passkeyRegisterVerify} from "@/request/passkey.js";
+import {tzDayjs} from "@/utils/day.js";
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
@@ -134,6 +159,10 @@ function changeLang(lang) {
 }
 
 const pwdShow = ref(false)
+const passkeyShow = ref(false)
+const passkeyLoading = ref(false)
+const passkeyAddLoading = ref(false)
+const passkeys = ref([])
 const form = reactive({
   password: '',
   newPwd: '',
@@ -158,8 +187,90 @@ const deleteConfirm = () => {
 }
 
 
-function submitPwd() {
+function formatTime(time) {
+  return time ? tzDayjs(time).format('YYYY-MM-DD HH:mm') : ''
+}
 
+function openPasskey() {
+  passkeyShow.value = true
+  refreshPasskeys()
+}
+
+function refreshPasskeys() {
+  passkeyLoading.value = true
+  passkeyList().then(list => {
+    passkeys.value = list || []
+  }).finally(() => {
+    passkeyLoading.value = false
+  })
+}
+
+async function addPasskey() {
+
+  if (passkeyAddLoading.value) return
+
+  if (!browserSupportsWebAuthn()) {
+    ElMessage({
+      message: t('passkeyNotSupported'),
+      type: 'error',
+      plain: true,
+    })
+    return
+  }
+
+  let name = ''
+
+  try {
+    const {value} = await ElMessageBox.prompt(t('passkeyNamePlaceholder'), t('passkeyName'), {
+      confirmButtonText: t('confirm'),
+      cancelButtonText: t('cancel'),
+      inputPlaceholder: t('passkeyNamePlaceholder'),
+    })
+    name = value || ''
+  } catch (e) {
+    return
+  }
+
+  passkeyAddLoading.value = true
+
+  try {
+    const options = await passkeyRegisterOptions()
+    const attestation = await startRegistration({optionsJSON: options})
+    await passkeyRegisterVerify(attestation, name)
+    ElMessage({
+      message: t('passkeyAddSuccess'),
+      type: 'success',
+      plain: true,
+    })
+    refreshPasskeys()
+  } catch (e) {
+    // 用户主动取消不打扰，其他错误由 axios 拦截器统一提示
+    if (e?.name !== 'NotAllowedError') {
+      console.warn('passkey register fail', e)
+    }
+  } finally {
+    passkeyAddLoading.value = false
+  }
+}
+
+function delPasskey(item) {
+  ElMessageBox.confirm(t('passkeyDeleteConfirm'), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(() => {
+    passkeyDelete(item.passkeyId).then(() => {
+      ElMessage({
+        message: t('passkeyDeleteSuccess'),
+        type: 'success',
+        plain: true,
+      })
+      refreshPasskeys()
+    })
+  })
+}
+
+function submitPwd() {
   if (setPwdLoading.value) return
 
   if (!form.password) {
@@ -293,6 +404,41 @@ function submitPwd() {
     display: flex;
     flex-direction: column;
     gap: 20px;
+  }
+
+  .passkey-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 120px;
+    max-height: 50vh;
+    overflow-y: auto;
+
+    .passkey-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--el-border-color-light);
+      border-radius: 6px;
+
+      .passkey-info {
+        min-width: 0;
+
+        .passkey-name {
+          font-weight: bold;
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+        }
+
+        .passkey-time {
+          font-size: 12px;
+          color: var(--regular-text-color);
+        }
+      }
+    }
   }
 }
 </style>

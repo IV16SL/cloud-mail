@@ -70,11 +70,11 @@
         <el-button type="primary" :loading="setPwdLoading" @click="submitPwd">{{$t('save')}}</el-button>
       </div>
     </el-dialog>
-    <el-dialog v-model="passkeyVerifyShow" :title="$t('passkeyVerifyTitle')" width="340" @closed="verifyPwdForm.password = ''">
+    <el-dialog v-model="verifyShow" :title="$t('passkeyVerifyTitle')" width="340" @closed="verifyPwdForm.password = ''">
       <div class="update-pwd">
-        <div style="color: var(--regular-text-color); margin-bottom: 12px;">{{$t('passkeyVerifyDesc')}}</div>
-        <el-input type="password" :placeholder="$t('password')" v-model="verifyPwdForm.password" autocomplete="off" show-password @keyup.enter="submitPasskeyVerify"/>
-        <el-button type="primary" :loading="verifyPwdLoading" @click="submitPasskeyVerify">{{$t('confirm')}}</el-button>
+        <div style="color: var(--regular-text-color); margin-bottom: 12px;">{{ $t(verifyDescKey) }}</div>
+        <el-input type="password" :placeholder="$t('password')" v-model="verifyPwdForm.password" autocomplete="off" show-password @keyup.enter="submitVerify"/>
+        <el-button type="primary" :loading="verifyPwdLoading" @click="submitVerify">{{$t('confirm')}}</el-button>
       </div>
     </el-dialog>
     <el-dialog v-model="passkeyShow" :title="$t('passkeyManage')" width="420">
@@ -196,9 +196,11 @@ function changeLang(lang) {
 }
 
 const pwdShow = ref(false)
-const passkeyVerifyShow = ref(false)
+const verifyShow = ref(false)
 const verifyPwdLoading = ref(false)
 const verifyPwdForm = reactive({password: ''})
+const verifyDescKey = ref('passkeyVerifyDesc')
+let verifyAction = null
 const passkeyShow = ref(false)
 const passkeyLoading = ref(false)
 const passkeyAddLoading = ref(false)
@@ -232,16 +234,21 @@ function formatTime(time) {
 }
 
 function openPasskey() {
-  passkeyVerifyShow.value = true
+  verifyDescKey.value = 'passkeyVerifyDesc'
+  verifyAction = () => {
+    passkeyShow.value = true
+    refreshPasskeys()
+  }
+  verifyShow.value = true
 }
 
-function submitPasskeyVerify() {
+function submitVerify() {
   if (verifyPwdLoading.value || !verifyPwdForm.password) return
   verifyPwdLoading.value = true
   verifyPassword(verifyPwdForm.password).then(() => {
-    passkeyVerifyShow.value = false
-    passkeyShow.value = true
-    refreshPasskeys()
+    verifyShow.value = false
+    if (verifyAction) verifyAction()
+    verifyAction = null
   }).finally(() => {
     verifyPwdLoading.value = false
   })
@@ -328,8 +335,12 @@ const pgpKeyInfo = ref(null)
 const pgpArmored = ref('')
 
 function openPgpKey() {
-  pgpKeyShow.value = true
-  refreshPgpKeyInfo()
+  verifyDescKey.value = 'pgpVerifyDesc'
+  verifyAction = () => {
+    pgpKeyShow.value = true
+    refreshPgpKeyInfo()
+  }
+  verifyShow.value = true
 }
 
 async function refreshPgpKeyInfo() {

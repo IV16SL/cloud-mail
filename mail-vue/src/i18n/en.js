@@ -292,6 +292,7 @@ const en = {
     pgpWrongPassphrase: 'Wrong passphrase',
     pgpPrivateKey: 'PGP private key',
     pgpManageKey: 'Manage PGP private key',
+    pgpVerifyDesc: 'Enter your login password to manage your PGP private key',
     pgpFingerprint: 'Fingerprint',
     pgpUserId: 'User ID',
     pgpNeedPassphrase: 'This key is passphrase-protected; you will be asked for it when decrypting',

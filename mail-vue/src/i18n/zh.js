@@ -292,6 +292,7 @@ const zh = {
     pgpWrongPassphrase: '口令错误',
     pgpPrivateKey: 'PGP 私钥',
     pgpManageKey: '管理 PGP 私钥',
+    pgpVerifyDesc: '管理 PGP 私钥前，请输入登录密码确认身份',
     pgpFingerprint: '指纹',
     pgpUserId: '用户 ID',
     pgpNeedPassphrase: '该私钥有口令保护，解密时需要输入口令',

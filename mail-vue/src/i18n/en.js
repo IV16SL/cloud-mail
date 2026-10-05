@@ -31,6 +31,8 @@ const en = {
     changePwdBtn: 'Change',
     passkey: 'Passkey',
     passkeyManage: 'Manage Passkeys',
+    passkeyVerifyTitle: 'Verify Password',
+    passkeyVerifyDesc: 'Enter your login password to manage passkeys',
     passkeyLogin: 'Sign in with Passkey',
     passkeyAdd: 'Add Passkey',
     passkeyName: 'Passkey Name',

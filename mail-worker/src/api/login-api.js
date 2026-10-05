@@ -8,6 +8,11 @@ app.post('/login', async (c) => {
 	return c.json(result.ok({ token: token }));
 });
 
+app.post('/verify-password', async (c) => {
+	await loginService.verifyPassword(c, await c.req.json());
+	return c.json(result.ok());
+});
+
 app.post('/register', async (c) => {
 	const jwt = await loginService.register(c, await c.req.json());
 	return c.json(result.ok(jwt));

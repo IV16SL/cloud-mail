@@ -256,6 +256,17 @@ const loginService = {
 		return jwt;
 	},
 
+	async verifyPassword(c, params) {
+
+		const { password } = params;
+
+		const userRow = await userService.selectById(c, userContext.getUserId(c));
+
+		if (!userRow || !password || !await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password)) {
+			throw new BizError(t('IncorrectPwd'));
+		}
+	},
+
 	async logout(c, userId) {
 		const token =userContext.getToken(c);
 		const authInfo = await c.env.kv.get(KvConst.AUTH_INFO + userId, { type: 'json' });

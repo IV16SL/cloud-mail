@@ -31,6 +31,8 @@ const zh = {
     changePwdBtn: '修改密码',
     passkey: '通行密钥',
     passkeyManage: '管理通行密钥',
+    passkeyVerifyTitle: '验证密码',
+    passkeyVerifyDesc: '管理通行密钥前，请输入登录密码确认身份',
     passkeyLogin: '使用通行密钥登录',
     passkeyAdd: '添加通行密钥',
     passkeyName: '通行密钥名称',

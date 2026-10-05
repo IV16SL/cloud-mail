@@ -70,6 +70,13 @@
         <el-button type="primary" :loading="setPwdLoading" @click="submitPwd">{{$t('save')}}</el-button>
       </div>
     </el-dialog>
+    <el-dialog v-model="passkeyVerifyShow" :title="$t('passkeyVerifyTitle')" width="340" @closed="verifyPwdForm.password = ''">
+      <div class="update-pwd">
+        <div style="color: var(--regular-text-color); margin-bottom: 12px;">{{$t('passkeyVerifyDesc')}}</div>
+        <el-input type="password" :placeholder="$t('password')" v-model="verifyPwdForm.password" autocomplete="off" show-password @keyup.enter="submitPasskeyVerify"/>
+        <el-button type="primary" :loading="verifyPwdLoading" @click="submitPasskeyVerify">{{$t('confirm')}}</el-button>
+      </div>
+    </el-dialog>
     <el-dialog v-model="passkeyShow" :title="$t('passkeyManage')" width="420">
       <div class="passkey-list" v-loading="passkeyLoading">
         <el-empty v-if="!passkeyLoading && passkeys.length === 0" :description="$t('passkeyEmpty')"/>
@@ -113,7 +120,7 @@
 </template>
 <script setup>
 import {reactive, ref, defineOptions} from 'vue'
-import {resetPassword, userDelete} from "@/request/my.js";
+import {resetPassword, userDelete, verifyPassword} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
 import {accountSetName} from "@/request/account.js";
@@ -189,6 +196,9 @@ function changeLang(lang) {
 }
 
 const pwdShow = ref(false)
+const passkeyVerifyShow = ref(false)
+const verifyPwdLoading = ref(false)
+const verifyPwdForm = reactive({password: ''})
 const passkeyShow = ref(false)
 const passkeyLoading = ref(false)
 const passkeyAddLoading = ref(false)
@@ -222,8 +232,19 @@ function formatTime(time) {
 }
 
 function openPasskey() {
-  passkeyShow.value = true
-  refreshPasskeys()
+  passkeyVerifyShow.value = true
+}
+
+function submitPasskeyVerify() {
+  if (verifyPwdLoading.value || !verifyPwdForm.password) return
+  verifyPwdLoading.value = true
+  verifyPassword(verifyPwdForm.password).then(() => {
+    passkeyVerifyShow.value = false
+    passkeyShow.value = true
+    refreshPasskeys()
+  }).finally(() => {
+    verifyPwdLoading.value = false
+  })
 }
 
 function refreshPasskeys() {

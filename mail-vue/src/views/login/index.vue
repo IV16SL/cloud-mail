@@ -17,10 +17,10 @@
           <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="form.email"
                     type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keyup.enter="submit">
             <template #append v-if="!hideLoginDomain">
-              <div @click.stop="openSelect">
+              <div @click.stop="openSelect(loginSelect)">
                 <el-select
                     v-if="show === 'login'"
-                    ref="mySelect"
+                    ref="loginSelect"
                     v-model="suffix"
                     :placeholder="$t('select')"
                     class="select"
@@ -58,10 +58,10 @@
           <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="registerForm.email" type="text" :placeholder="$t('emailAccount')"
                     autocomplete="off" @keyup.enter="submitRegister">
             <template #append v-if="!hideLoginDomain">
-              <div @click.stop="openSelect">
+              <div @click.stop="openSelect(registerSelect)">
                 <el-select
                     v-if="show !== 'login'"
-                    ref="mySelect"
+                    ref="registerSelect"
                     v-model="suffix"
                     :placeholder="$t('select')"
                     class="select"
@@ -118,9 +118,9 @@
       <div class="bind-container">
         <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="bindForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keyup.enter="bind">
           <template #append v-if="!hideLoginDomain">
-            <div @click.stop="openSelect">
+            <div @click.stop="openSelect(bindSelect)">
               <el-select
-                  ref="mySelect"
+                  ref="bindSelect"
                   v-model="suffix"
                   :placeholder="$t('select')"
                   class="select"
@@ -218,7 +218,9 @@ const form = reactive({
   password: '',
 
 });
-const mySelect = ref()
+const loginSelect = ref()
+const registerSelect = ref()
+const bindSelect = ref()
 const suffix = ref('')
 const registerForm = reactive({
   email: '',
@@ -281,8 +283,8 @@ const background = computed(() => {
   } : ''
 })
 
-const openSelect = () => {
-  mySelect.value.toggleMenu()
+const openSelect = (selectRef) => {
+  selectRef?.toggleMenu()
 }
 
 const getFullEmail = (email) => {

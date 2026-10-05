@@ -14,6 +14,7 @@
         <span class="form-desc" v-if="show === 'login'">{{ $t('loginTitle') }}</span>
         <span class="form-desc" v-else>{{ $t('regTitle') }}</span>
         <div v-show="show === 'login'">
+          <template v-if="!totpMode">
           <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="form.email"
                     type="text" :placeholder="$t('emailAccount')" autocomplete="off" @keyup.enter="submit">
             <template #append v-if="!hideLoginDomain">
@@ -53,6 +54,29 @@
             <Icon v-else :icon="p.icon" width="18" height="18" style="margin-right: 10px" />
             {{ p.label }}
           </el-button>
+          </template>
+          <template v-else>
+            <div class="totp-step">
+              <div class="totp-title">{{ $t('totpTitle') }}</div>
+              <div class="totp-desc">{{ useRecovery ? $t('totpRecoveryDesc') : $t('totpDesc') }}</div>
+              <el-input v-if="!useRecovery" v-model="totpCode" :placeholder="$t('totpPlaceholder')"
+                        maxlength="6" inputmode="numeric" autocomplete="one-time-code"
+                        class="totp-input" @input="onTotpInput" @keyup.enter="submitTotp">
+              </el-input>
+              <el-input v-else v-model="recoveryInput" :placeholder="$t('totpRecoveryPlaceholder')"
+                        autocomplete="off" class="totp-input" @keyup.enter="submitTotp">
+              </el-input>
+              <el-button class="btn" type="primary" @click="submitTotp" :loading="totpLoading"
+              >{{ $t('verify') }}
+              </el-button>
+              <div class="totp-links">
+                <span class="totp-link" @click="useRecovery = !useRecovery">
+                  {{ useRecovery ? $t('totpUseCode') : $t('totpUseRecovery') }}
+                </span>
+                <span class="totp-link" @click="backToLogin">{{ $t('back') }}</span>
+              </div>
+            </div>
+          </template>
         </div>
         <div v-show="show !== 'login'">
           <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="registerForm.email" type="text" :placeholder="$t('emailAccount')"
@@ -172,6 +196,7 @@ import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
 import {oauthBindUser, oauthLinuxDoLogin, oauthGithubLogin, oauthGoogleLogin} from "@/request/ouath.js";
+import {totpVerifyLogin} from "@/request/totp.js";
 import {startAuthentication, browserSupportsWebAuthn} from '@simplewebauthn/browser';
 import {passkeyLoginOptions, passkeyLoginVerify} from "@/request/passkey.js";
 
@@ -442,10 +467,61 @@ const submit = () => {
 
   loginLoading.value = true
   login(email, form.password).then(async data => {
-    await saveToken(data.token)
+    if (data.needTotp) {
+      // 两步验证：进入第二步，不直接发 token
+      preAuthToken.value = data.preAuthToken
+      totpCode.value = ''
+      recoveryInput.value = ''
+      useRecovery.value = false
+      totpMode.value = true
+    } else {
+      await saveToken(data.token)
+    }
   }).finally(() => {
     loginLoading.value = false
   })
+}
+
+// ---- TOTP 第二步 ----
+const totpMode = ref(false)
+const preAuthToken = ref('')
+const totpCode = ref('')
+const recoveryInput = ref('')
+const useRecovery = ref(false)
+const totpLoading = ref(false)
+
+const onTotpInput = () => {
+  totpCode.value = totpCode.value.replace(/\D/g, '').slice(0, 6)
+  if (totpCode.value.length === 6) {
+    submitTotp()
+  }
+}
+
+const submitTotp = () => {
+  if (totpLoading.value) return
+  const code = useRecovery.value ? recoveryInput.value.trim() : totpCode.value
+  if (!code) {
+    ElMessage({ message: t('totpEmptyCode'), type: 'error', plain: true })
+    return
+  }
+  totpLoading.value = true
+  totpVerifyLogin(
+    preAuthToken.value,
+    useRecovery.value ? undefined : code,
+    useRecovery.value ? code : undefined
+  ).then(async data => {
+    await saveToken(data.token)
+  }).finally(() => {
+    totpLoading.value = false
+  })
+}
+
+const backToLogin = () => {
+  totpMode.value = false
+  preAuthToken.value = ''
+  totpCode.value = ''
+  recoveryInput.value = ''
+  useRecovery.value = false
 }
 
 async function passkeyLogin() {
@@ -706,6 +782,42 @@ function submitRegister() {
     height: 36px;
     width: 100%;
     border-radius: 6px;
+  }
+
+  .totp-step {
+    .totp-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .totp-desc {
+      font-size: 13px;
+      color: var(--form-desc-color);
+      margin-bottom: 16px;
+    }
+
+    .totp-input {
+      margin-bottom: 12px;
+
+      :deep(.el-input__inner) {
+        text-align: center;
+        font-size: 20px;
+        letter-spacing: 8px;
+      }
+    }
+
+    .totp-links {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 14px;
+    }
+
+    .totp-link {
+      font-size: 13px;
+      color: var(--el-color-primary);
+      cursor: pointer;
+    }
   }
 
   .form-desc {

@@ -20,6 +20,7 @@ import { toUtc } from '../utils/date-uitil';
 import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
 import reqUtils from '../utils/req-utils';
+import totpService from './totp-service';
 
 const loginService = {
 
@@ -245,6 +246,53 @@ const loginService = {
 			}
 		}
 
+		// TOTP 两步验证：密码登录且已启用 → 返回预授权票据，前端进入第二步验码
+		//（passkey / oauth 走 noVerifyPwd，不受影响）
+		if (!noVerifyPwd && userRow.totpEnabled) {
+			const preAuthToken = uuidv4();
+			await c.env.kv.put(KvConst.TOTP_PREAUTH + preAuthToken,
+				JSON.stringify({ userId: userRow.userId, attempts: 0 }),
+				{ expirationTtl: 300 });
+			return { needTotp: true, preAuthToken };
+		}
+
+		return await this.finishLogin(c, userRow);
+	},
+
+	// 登录第二步：校验预授权票据 + TOTP 码/恢复码，通过后签发正式 JWT
+	async verifyTotpLogin(c, params) {
+		const { preAuthToken, code, recoveryCode } = params || {};
+		const key = KvConst.TOTP_PREAUTH + preAuthToken;
+		const pre = await c.env.kv.get(key, { type: 'json' });
+		if (!pre) {
+			throw new BizError(t('totpPreAuthExpired'));
+		}
+		if (pre.attempts >= 5) {
+			await c.env.kv.delete(key);
+			throw new BizError(t('tooManyLoginAttempts'));
+		}
+		const userRow = await userService.selectById(c, pre.userId);
+		if (!userRow || userRow.isDel === isDel.DELETE || userRow.status === userConst.status.BAN) {
+			await c.env.kv.delete(key);
+			throw new BizError(t('authExpired'));
+		}
+		let ok = false;
+		if (recoveryCode) {
+			ok = await totpService.useRecoveryCode(c, userRow.userId, recoveryCode);
+		} else {
+			ok = await totpService.verifyCode(c, userRow.userId, code);
+		}
+		if (!ok) {
+			pre.attempts += 1;
+			await c.env.kv.put(key, JSON.stringify(pre), { expirationTtl: 300 });
+			throw new BizError(t('totpCodeInvalid'));
+		}
+		await c.env.kv.delete(key);
+		return await this.finishLogin(c, userRow);
+	},
+
+	// 签发 JWT + 会话落 KV（密码登录 / TOTP 第二步 / passkey / oauth 共用）
+	async finishLogin(c, userRow) {
 		const uuid = uuidv4();
 		const jwt = await JwtUtils.generateToken(c,{ userId: userRow.userId, token: uuid });
 

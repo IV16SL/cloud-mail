@@ -8,7 +8,9 @@ const KvConst = {
 	PGP_KEY: 'pgp-key:',
 	OAUTH_BIND: 'oauth-bind:',
 	LOGIN_FAIL: 'login-fail:',
-	ADMIN_LOGIN_FAIL: 'admin-login-fail:'
+	ADMIN_LOGIN_FAIL: 'admin-login-fail:',
+	TOTP_PREAUTH: 'totp-preauth:',
+	TOTP_PENDING: 'totp-pending:'
 }
 
 export default KvConst;

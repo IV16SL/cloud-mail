@@ -33,20 +33,29 @@ const dbInit = {
 		await this.v3_2DB(c);
 		await this.v3_3DB(c);
 		await this.v3_4DB(c);
+		await this.v3_5DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
 	},
 
 	// 自愈式加字段：逐条执行，单条失败（字段已存在等）不影响其他字段，
 	// 重复执行 /init 可补齐之前因 batch 原子回滚而缺失的字段
-	async addColumns(c, columns) {
-		for (const [table, column, ddl] of columns) {
+	async addColumns(c, columns) {		for (const [table, column, ddl] of columns) {
 			try {
 				await c.env.db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl};`).run();
 			} catch (e) {
 				console.warn(`跳过字段：${e.message}`);
 			}
 		}
+	},
+
+	async v3_5DB(c) {
+		// TOTP 两步验证：secret 经 AES 加密存储，恢复码存 SHA-256 哈希 JSON
+		await this.addColumns(c, [
+			['user', 'totp_secret', `TEXT NOT NULL DEFAULT ''`],
+			['user', 'totp_enabled', `INTEGER NOT NULL DEFAULT 0`],
+			['user', 'totp_recovery', `TEXT NOT NULL DEFAULT ''`],
+		]);
 	},
 
 	async v3_4DB(c) {

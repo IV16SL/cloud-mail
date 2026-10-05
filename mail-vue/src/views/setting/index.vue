@@ -41,6 +41,14 @@
           <el-button type="primary" @click="openPgpKey">{{$t('pgpManageKey')}}</el-button>
         </div>
       </div>
+      <div class="item">
+        <div>{{$t('totp')}}</div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span v-if="totpEnabled" style="color: var(--el-color-success); font-size: 13px;">{{$t('totpEnabled')}}</span>
+          <span v-else style="color: var(--el-text-color-secondary); font-size: 13px;">{{$t('totpDisabled')}}</span>
+          <el-button type="primary" @click="openTotp">{{$t('totpManage')}}</el-button>
+        </div>
+      </div>
     </div>
     <div class="language">
       <div class="title">{{$t('language')}}</div>
@@ -93,6 +101,63 @@
         <el-button type="primary" :loading="passkeyAddLoading" @click="addPasskey">{{$t('passkeyAdd')}}</el-button>
       </template>
     </el-dialog>
+    <el-dialog v-model="totpEnrollShow" :title="$t('totpEnrollTitle')" width="380" @closed="resetTotpEnroll">
+      <div v-loading="totpLoading" class="totp-box">
+        <template v-if="totpStep === 1">
+          <div class="totp-qr-wrap">
+            <QrcodeVue :value="totpUri" :size="200" level="M"/>
+          </div>
+          <div class="totp-secret-row">
+            <span class="totp-secret">{{ totpSecret }}</span>
+            <el-button size="small" @click="copyText(totpSecret)">{{$t('copy')}}</el-button>
+          </div>
+          <div class="totp-hint">{{ $t('totpScanHint') }}</div>
+          <el-button type="primary" @click="totpStep = 2" style="width: 100%; margin-top: 12px;">{{$t('nextStep')}}</el-button>
+        </template>
+        <template v-else-if="totpStep === 2">
+          <div class="totp-hint">{{ $t('totpVerifyHint') }}</div>
+          <el-input v-model="totpCode" :placeholder="$t('totpPlaceholder')" maxlength="6"
+                    inputmode="numeric" autocomplete="one-time-code" class="totp-code-input"
+                    @keyup.enter="confirmTotpEnroll"/>
+          <el-button type="primary" :loading="totpLoading" @click="confirmTotpEnroll" style="width: 100%; margin-top: 12px;">{{$t('totpEnableBtn')}}</el-button>
+        </template>
+        <template v-else>
+          <div class="totp-hint">{{ $t('totpRecoveryHint') }}</div>
+          <div class="totp-recovery-list">
+            <div v-for="c in recoveryCodes" :key="c" class="totp-recovery-code">{{ c }}</div>
+          </div>
+          <div style="display: flex; gap: 10px; margin-top: 12px;">
+            <el-button @click="copyText(recoveryCodes.join('\n'))" style="flex: 1;">{{$t('copy')}}</el-button>
+            <el-button type="primary" @click="totpEnrollShow = false" style="flex: 1;">{{$t('totpSaved')}}</el-button>
+          </div>
+        </template>
+      </div>
+    </el-dialog>
+    <el-dialog v-model="totpManageShow" :title="$t('totpManage')" width="380">
+      <div class="totp-box">
+        <div class="totp-status-row">
+          <span>{{ $t('totp') }}</span>
+          <span style="color: var(--el-color-success);">{{$t('totpEnabled')}}</span>
+        </div>
+        <div class="totp-hint">{{ $t('totpManageHint') }}</div>
+        <div style="display: flex; gap: 10px; margin-top: 12px;">
+          <el-button @click="regenRecoveryCodes" style="flex: 1;">{{$t('totpRegenRecovery')}}</el-button>
+          <el-button type="danger" @click="disableTotp" style="flex: 1;">{{$t('totpDisable')}}</el-button>
+        </div>
+      </div>
+    </el-dialog>
+    <el-dialog v-model="totpRecoveryShow" :title="$t('totpRecoveryTitle')" width="380">
+      <div class="totp-box">
+        <div class="totp-hint">{{ $t('totpRecoveryHint') }}</div>
+        <div class="totp-recovery-list">
+          <div v-for="c in recoveryCodes" :key="c" class="totp-recovery-code">{{ c }}</div>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 12px;">
+          <el-button @click="copyText(recoveryCodes.join('\n'))" style="flex: 1;">{{$t('copy')}}</el-button>
+          <el-button type="primary" @click="totpRecoveryShow = false" style="flex: 1;">{{$t('confirm')}}</el-button>
+        </div>
+      </div>
+    </el-dialog>
     <el-dialog v-model="pgpKeyShow" :title="$t('pgpManageKey')" width="440">
       <div v-loading="pgpKeyLoading" class="pgp-key-box">
         <template v-if="pgpKeyInfo">
@@ -130,6 +195,8 @@ import {useSettingStore} from "@/store/setting.js";
 import {startRegistration, browserSupportsWebAuthn} from '@simplewebauthn/browser';
 import {parsePrivateKey, savePrivateKey, removePrivateKey, privateKeyInfo} from "@/utils/pgp-utils.js";
 import {passkeyList, passkeyDelete, passkeyRegisterOptions, passkeyRegisterVerify} from "@/request/passkey.js";
+import {totpEnroll, totpConfirm, totpDisable, totpStatus, totpRegenRecoveryCodes} from "@/request/totp.js";
+import QrcodeVue from 'qrcode.vue'
 import {tzDayjs} from "@/utils/day.js";
 
 const { t } = useI18n()
@@ -341,6 +408,103 @@ function openPgpKey() {
     refreshPgpKeyInfo()
   }
   verifyShow.value = true
+}
+
+// ---- TOTP 两步验证 ----
+const totpEnabled = ref(false)
+const totpEnrollShow = ref(false)
+const totpManageShow = ref(false)
+const totpRecoveryShow = ref(false)
+const totpStep = ref(1)
+const totpSecret = ref('')
+const totpUri = ref('')
+const totpCode = ref('')
+const recoveryCodes = ref([])
+const totpLoading = ref(false)
+
+totpStatus().then(data => {
+  totpEnabled.value = data.enabled
+}).catch(() => {})
+
+function openTotp() {
+  verifyDescKey.value = 'totpVerifyDesc'
+  verifyAction = () => {
+    totpStatus().then(data => {
+      totpEnabled.value = data.enabled
+      if (data.enabled) {
+        totpManageShow.value = true
+      } else {
+        startTotpEnroll()
+      }
+    })
+  }
+  verifyShow.value = true
+}
+
+function startTotpEnroll() {
+  totpLoading.value = true
+  totpEnroll().then(data => {
+    totpSecret.value = data.secret
+    totpUri.value = data.otpauthUri
+    totpStep.value = 1
+    totpCode.value = ''
+    totpEnrollShow.value = true
+  }).finally(() => {
+    totpLoading.value = false
+  })
+}
+
+function confirmTotpEnroll() {
+  const code = totpCode.value.replace(/\D/g, '')
+  if (code.length !== 6) {
+    ElMessage({ message: t('totpCodeInvalid'), type: 'error', plain: true })
+    return
+  }
+  totpLoading.value = true
+  totpConfirm(code).then(data => {
+    recoveryCodes.value = data.recoveryCodes
+    totpStep.value = 3
+    totpEnabled.value = true
+  }).finally(() => {
+    totpLoading.value = false
+  })
+}
+
+function regenRecoveryCodes() {
+  ElMessageBox.confirm(t('totpRegenConfirm'), t('totpRegenRecovery'), { type: 'warning' }).then(() => {
+    totpRegenRecoveryCodes().then(data => {
+      recoveryCodes.value = data.recoveryCodes
+      totpManageShow.value = false
+      totpRecoveryShow.value = true
+    })
+  }).catch(() => {})
+}
+
+function disableTotp() {
+  verifyDescKey.value = 'totpVerifyDesc'
+  verifyAction = () => {
+    totpDisable().then(() => {
+      totpEnabled.value = false
+      totpManageShow.value = false
+      ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
+    })
+  }
+  verifyShow.value = true
+}
+
+function resetTotpEnroll() {
+  totpStep.value = 1
+  totpSecret.value = ''
+  totpUri.value = ''
+  totpCode.value = ''
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    ElMessage({ message: t('copySuccessMsg'), type: 'success', plain: true })
+  }).catch(() => {
+    ElMessage({ message: t('copyFailMsg'), type: 'error', plain: true })
+  })
 }
 
 async function refreshPgpKeyInfo() {
@@ -592,6 +756,74 @@ function submitPwd() {
       :deep(.el-textarea__inner) {
         font-family: monospace;
         font-size: 12px;
+      }
+    }
+
+    .totp-box {
+      .totp-qr-wrap {
+        display: flex;
+        justify-content: center;
+        padding: 12px;
+        background: #fff;
+        border-radius: 8px;
+        margin-bottom: 12px;
+      }
+
+      .totp-secret-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .totp-secret {
+        flex: 1;
+        font-family: monospace;
+        font-size: 13px;
+        word-break: break-all;
+        background: var(--el-fill-color-light);
+        padding: 8px;
+        border-radius: 6px;
+      }
+
+      .totp-hint {
+        font-size: 13px;
+        color: var(--regular-text-color);
+        line-height: 1.6;
+        margin-bottom: 12px;
+      }
+
+      .totp-code-input {
+        :deep(.el-input__inner) {
+          text-align: center;
+          font-size: 20px;
+          letter-spacing: 8px;
+        }
+      }
+
+      .totp-recovery-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 4px;
+      }
+
+      .totp-recovery-code {
+        font-family: monospace;
+        font-size: 14px;
+        text-align: center;
+        background: var(--el-fill-color-light);
+        padding: 8px 4px;
+        border-radius: 6px;
+      }
+
+      .totp-status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--el-border-color-lighter);
+        margin-bottom: 12px;
       }
     }
 

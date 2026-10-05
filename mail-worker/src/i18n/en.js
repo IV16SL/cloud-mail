@@ -1,6 +1,11 @@
 const en = {
 	IncorrectPwd: 'Incorrect password',
 	tooManyLoginAttempts: 'Too many failed login attempts, please try again in 15 minutes',
+	totpAlreadyEnabled: 'Two-factor authentication is already enabled',
+	totpEnrollExpired: 'Enrollment expired, please start over',
+	totpCodeInvalid: 'Invalid verification code',
+	totpPreAuthExpired: 'Verification expired, please log in again',
+	totpNotEnabled: 'Two-factor authentication is not enabled',
 	addAccountDisabled: 'Add Email Address feature is disabled',
 	regDisabled: 'Sign up is disabled',
 	emptyEmail: 'Email cannot be empty',

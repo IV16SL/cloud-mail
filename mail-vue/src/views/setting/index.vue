@@ -44,9 +44,9 @@
       <div class="item">
         <div>{{$t('totp')}}</div>
         <div style="display: flex; align-items: center; gap: 10px;">
+          <el-button type="primary" @click="openTotp">{{$t('totpManage')}}</el-button>
           <span v-if="totpEnabled" style="color: var(--el-color-success); font-size: 13px;">{{$t('totpEnabled')}}</span>
           <span v-else style="color: var(--el-text-color-secondary); font-size: 13px;">{{$t('totpDisabled')}}</span>
-          <el-button type="primary" @click="openTotp">{{$t('totpManage')}}</el-button>
         </div>
       </div>
     </div>

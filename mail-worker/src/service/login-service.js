@@ -19,6 +19,7 @@ import dayjs from 'dayjs';
 import { toUtc } from '../utils/date-uitil';
 import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
+import reqUtils from '../utils/req-utils';
 
 const loginService = {
 
@@ -221,8 +222,27 @@ const loginService = {
 			throw new BizError(t('isBanUser'));
 		}
 
+		// 防爆破：同一 IP + 邮箱 15 分钟内失败 5 次则锁定
+		if (!noVerifyPwd) {
+			await this.checkLoginRateLimit(c, email);
+		}
+
 		if (!await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password) && !noVerifyPwd) {
+			await this.recordLoginFail(c, email);
 			throw new BizError(t('IncorrectPwd'));
+		}
+
+		if (!noVerifyPwd) {
+			await this.clearLoginFail(c, email);
+		}
+
+		// 老哈希（单轮 SHA-256）透明升级到 PBKDF2：仅密码登录成功时执行，失败不影响登录
+		if (!noVerifyPwd && cryptoUtils.needsRehash(userRow.password)) {
+			try {
+				await userService.resetPassword(c, { password }, userRow.userId);
+			} catch (e) {
+				console.warn(`密码哈希升级失败：${e.message}`);
+			}
 		}
 
 		const uuid = uuidv4();
@@ -265,6 +285,28 @@ const loginService = {
 		if (!userRow || !password || !await cryptoUtils.verifyPassword(password, userRow.salt, userRow.password)) {
 			throw new BizError(t('IncorrectPwd'));
 		}
+	},
+
+	// 登录防爆破：按 IP + 邮箱计数，15 分钟内失败 5 次锁定
+	loginFailKey(c, email) {
+		return KvConst.LOGIN_FAIL + reqUtils.getIp(c) + ':' + String(email || '').toLowerCase();
+	},
+
+	async checkLoginRateLimit(c, email) {
+		const count = parseInt(await c.env.kv.get(this.loginFailKey(c, email)) || '0', 10);
+		if (count >= 5) {
+			throw new BizError(t('tooManyLoginAttempts'));
+		}
+	},
+
+	async recordLoginFail(c, email) {
+		const key = this.loginFailKey(c, email);
+		const count = parseInt(await c.env.kv.get(key) || '0', 10) + 1;
+		await c.env.kv.put(key, String(count), { expirationTtl: 900 });
+	},
+
+	async clearLoginFail(c, email) {
+		await c.env.kv.delete(this.loginFailKey(c, email));
 	},
 
 	async logout(c, userId) {

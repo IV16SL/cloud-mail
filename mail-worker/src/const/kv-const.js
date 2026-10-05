@@ -6,7 +6,9 @@ const KvConst = {
 	PUBLIC_KEY: "public_key:",
 	PASSKEY_CHALLENGE: 'passkey-challenge:',
 	PGP_KEY: 'pgp-key:',
-	OAUTH_BIND: 'oauth-bind:'
+	OAUTH_BIND: 'oauth-bind:',
+	LOGIN_FAIL: 'login-fail:',
+	ADMIN_LOGIN_FAIL: 'admin-login-fail:'
 }
 
 export default KvConst;

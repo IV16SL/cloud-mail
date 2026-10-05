@@ -158,7 +158,22 @@ const userService = {
 
 
 		const query = orm(c).select({
-			...user,
+			// 白名单列：绝不能返回 password / salt（防哈希批量导出离线破解）
+			userId: user.userId,
+			email: user.email,
+			type: user.type,
+			status: user.status,
+			createTime: user.createTime,
+			activeTime: user.activeTime,
+			createIp: user.createIp,
+			activeIp: user.activeIp,
+			os: user.os,
+			browser: user.browser,
+			device: user.device,
+			sort: user.sort,
+			sendCount: user.sendCount,
+			regKeyId: user.regKeyId,
+			isDel: user.isDel,
 			username: oauth.username,
 			trustLevel: oauth.trustLevel,
 			avatar: oauth.avatar,

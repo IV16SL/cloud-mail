@@ -14,7 +14,7 @@
           <Icon icon="material-symbols-light:close-rounded" width="22" height="22"/>
         </div>
       </div>
-      <div class="container" :class="{ 'pgp-on': form.pgpEncrypt && form.receiveEmail.length }">
+      <div class="container">
         <el-input-tag  @add-tag="addTagChange" tag-type="primary" @input="inputChange" size="default" v-model="form.receiveEmail" >
           <template #prefix>
             <div class="item-title" >{{ $t('recipient') }}</div>
@@ -37,20 +37,20 @@
               />
             </el-select>
           </template>
+          <template #tag="{ value }">
+            <span class="recv-tag">
+              <span class="recv-tag-email">{{ value }}</span>
+              <Icon v-if="form.pgpEncrypt && pgpKeyStatus[value] === true" icon="mdi:lock" class="pgp-tag-ok" :width="13" :height="13"/>
+              <Icon v-else-if="form.pgpEncrypt && pgpKeyStatus[value] === false" icon="mdi:lock-open" class="pgp-tag-fail" :width="13" :height="13"/>
+              <Icon v-else-if="form.pgpEncrypt" icon="mdi:loading" class="pgp-tag-loading" :width="13" :height="13"/>
+            </span>
+          </template>
           <template #suffix>
             <div style="display: flex;margin-right: 3px;">
               <Icon icon="fa7-solid:user-plus" width="20" height="20" class="add-contact" @click.stop="openContacts" />
             </div>
           </template>
         </el-input-tag>
-        <div v-if="form.pgpEncrypt && form.receiveEmail.length" class="pgp-status">
-          <div v-for="email in form.receiveEmail" :key="email" class="pgp-status-item">
-            <span class="pgp-email">{{ email }}</span>
-            <Icon v-if="pgpKeyStatus[email] === true" icon="mdi:check-circle" class="pgp-ok" width="16" height="16"/>
-            <Icon v-else-if="pgpKeyStatus[email] === false" icon="mdi:close-circle" class="pgp-fail" width="16" height="16"/>
-            <Icon v-else icon="mdi:loading" class="pgp-loading" width="16" height="16"/>
-          </div>
-        </div>
         <el-input v-model="form.subject" :placeholder="t('subject')" />
         <tinyEditor :def-value="defValue" ref="editor" :pgp-active="form.pgpEncrypt" @change="change" @focus="focusChange" @pgp-toggle="togglePgp" />
         <div class="button-item">
@@ -757,41 +757,31 @@ function close() {
       grid-template-rows: auto auto 1fr auto;
       gap: 15px;
 
-      &.pgp-on {
-        grid-template-rows: auto auto auto 1fr auto;
-      }
+      .recv-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
 
-      .pgp-status {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px 16px;
-        font-size: 12px;
+        .recv-tag-email {
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+        }
 
-        .pgp-status-item {
-          display: flex;
-          align-items: center;
-          gap: 4px;
+        .pgp-tag-ok {
+          color: var(--el-color-success);
+          flex-shrink: 0;
+        }
 
-          .pgp-email {
-            color: var(--regular-text-color);
-            max-width: 220px;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-          }
+        .pgp-tag-fail {
+          color: var(--el-color-danger);
+          flex-shrink: 0;
+        }
 
-          .pgp-ok {
-            color: var(--el-color-success);
-          }
-
-          .pgp-fail {
-            color: var(--el-color-danger);
-          }
-
-          .pgp-loading {
-            color: var(--el-text-color-placeholder);
-            animation: pgp-spin 1s linear infinite;
-          }
+        .pgp-tag-loading {
+          color: var(--el-text-color-placeholder);
+          flex-shrink: 0;
+          animation: pgp-spin 1s linear infinite;
         }
       }
 

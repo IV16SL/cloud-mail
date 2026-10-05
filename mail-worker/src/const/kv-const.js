@@ -5,7 +5,8 @@ const KvConst = {
 	ANALYSIS_ECHARTS: 'analysis_echarts:',
 	PUBLIC_KEY: "public_key:",
 	PASSKEY_CHALLENGE: 'passkey-challenge:',
-	PGP_KEY: 'pgp-key:'
+	PGP_KEY: 'pgp-key:',
+	OAUTH_BIND: 'oauth-bind:'
 }
 
 export default KvConst;

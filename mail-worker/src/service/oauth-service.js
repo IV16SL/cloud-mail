@@ -6,15 +6,30 @@ import userService from "./user-service";
 import loginService from "./login-service";
 import cryptoUtils from "../utils/crypto-utils";
 import settingService from "./setting-service";
+import KvConst from "../const/kv-const";
+import { v4 as uuidv4 } from 'uuid';
 import {t} from '../i18n/i18n';
 
 const oauthService = {
 
 	async bindUser(c, params) {
 
-		const { email, oauthUserId, code } = params;
+		const { email, code, bindToken } = params;
+
+		const oauthUserId = bindToken ? await c.env.kv.get(KvConst.OAUTH_BIND + bindToken) : null;
+
+		if (!oauthUserId) {
+			throw new BizError(t('oauthBindExpired'));
+		}
+
+		// 一次性使用
+		await c.env.kv.delete(KvConst.OAUTH_BIND + bindToken);
 
 		const oauthRow = await this.getById(c, oauthUserId);
+
+		if (!oauthRow) {
+			throw new BizError(t('oauthBindExpired'));
+		}
 
 		let userRow = await userService.selectByIdIncludeDel(c, oauthRow.userId);
 
@@ -185,7 +200,12 @@ const oauthService = {
 		const userRow = await userService.selectByIdIncludeDel(c, oauthRow.userId);
 
 		if (!userRow) {
-			return { userInfo: oauthRow, token: null };
+			// 未绑定邮箱：签发一次性 bindToken，证明调用方确实走完了第三方 OAuth 流程。
+			// bindUser 只认这个 token，不再信任客户端传来的 oauthUserId，
+			// 防止枚举可预测的平台用户 ID 来抢占他人身份、绕过注册开关建号。
+			const bindToken = uuidv4();
+			await c.env.kv.put(KvConst.OAUTH_BIND + bindToken, String(oauthRow.oauthUserId), { expirationTtl: 600 });
+			return { userInfo: oauthRow, token: null, bindToken };
 		}
 
 		const JwtToken = await loginService.login(c, { email: userRow.email, password: null }, true);

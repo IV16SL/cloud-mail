@@ -49,6 +49,17 @@
           <span v-else style="color: var(--el-text-color-secondary); font-size: 13px;">{{$t('totpDisabled')}}</span>
         </div>
       </div>
+      <div class="item" v-if="oauthProviders.length > 0">
+        <div>{{$t('oauthBind')}}</div>
+        <div class="oauth-bind-list">
+          <div v-for="p in oauthProviders" :key="p.key" class="oauth-bind-item">
+            <span class="oauth-bind-label">{{ p.label }}</span>
+            <span v-if="boundPlatforms.includes(p.key)" class="oauth-bound">{{$t('bound')}}</span>
+            <el-button v-if="boundPlatforms.includes(p.key)" link type="danger" @click="confirmUnbindOAuth(p)">{{$t('unbind')}}</el-button>
+            <el-button v-else type="primary" size="small" @click="startBindOAuth(p.key)">{{$t('bind')}}</el-button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="language">
       <div class="title">{{$t('language')}}</div>
@@ -184,7 +195,8 @@
   </div>
 </template>
 <script setup>
-import {reactive, ref, defineOptions} from 'vue'
+import {reactive, ref, defineOptions, computed} from 'vue'
+import {ElMessageBox} from "element-plus";
 import {resetPassword, userDelete, verifyPassword} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
@@ -196,6 +208,7 @@ import {startRegistration, browserSupportsWebAuthn} from '@simplewebauthn/browse
 import {parsePrivateKey, savePrivateKey, removePrivateKey, privateKeyInfo} from "@/utils/pgp-utils.js";
 import {passkeyList, passkeyDelete, passkeyRegisterOptions, passkeyRegisterVerify} from "@/request/passkey.js";
 import {totpEnroll, totpConfirm, totpDisable, totpStatus, totpRegenRecoveryCodes} from "@/request/totp.js";
+import {oauthBindings, oauthUnbind} from "@/request/ouath.js";
 import QrcodeVue from 'qrcode.vue'
 import {tzDayjs} from "@/utils/day.js";
 
@@ -499,6 +512,60 @@ function resetTotpEnroll() {
   totpCode.value = ''
 }
 
+// ---- OAuth 第三方账号绑定 ----
+const boundPlatforms = ref([])
+
+const oauthProviders = computed(() => {
+  const allProviders = [
+    { key: 'google', label: 'Google' },
+    { key: 'github', label: 'GitHub' },
+    { key: 'linuxdo', label: 'LinuxDo' },
+  ]
+  return allProviders.filter(p => settingStore.settings[p.key + 'Switch'] === 0)
+})
+
+function refreshOAuthBindings() {
+  oauthBindings().then(data => {
+    boundPlatforms.value = data || []
+  }).catch(() => {})
+}
+
+refreshOAuthBindings()
+
+function startBindOAuth(provider) {
+  verifyDescKey.value = 'oauthVerifyDesc'
+  verifyAction = () => {
+    doStartBindOAuth(provider)
+  }
+  verifyShow.value = true
+}
+
+function doStartBindOAuth(provider) {
+  const clientId = settingStore.settings[provider + 'ClientId']
+  const redirectUri = encodeURIComponent(window.location.origin + '/login')
+  sessionStorage.setItem('oauthProvider', provider)
+  sessionStorage.setItem('oauthBindMode', '1')
+  const authorizeUrls = {
+    linuxdo: `https://connect.linux.do/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid+profile+email&state=${provider}`,
+    github: `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email&state=${provider}`,
+    google: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid+profile+email&state=${provider}`,
+  }
+  window.location.href = authorizeUrls[provider]
+}
+
+function confirmUnbindOAuth(p) {
+  ElMessageBox.confirm(t('unbindConfirm', { msg: p.label }), {
+    confirmButtonText: t('confirm'),
+    cancelButtonText: t('cancel'),
+    type: 'warning'
+  }).then(() => {
+    oauthUnbind(p.key).then(() => {
+      ElMessage({ message: t('unbindSuccessMsg'), type: 'success', plain: true })
+      refreshOAuthBindings()
+    })
+  }).catch(() => {})
+}
+
 function copyText(text) {
   navigator.clipboard.writeText(text).then(() => {
     ElMessage({ message: t('copySuccessMsg'), type: 'success', plain: true })
@@ -648,6 +715,24 @@ function submitPwd() {
       position: relative;
       > div:first-child {
         white-space: nowrap;
+      }
+      .oauth-bind-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .oauth-bind-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .oauth-bind-label {
+        font-size: 13px;
+        min-width: 60px;
+      }
+      .oauth-bound {
+        font-size: 13px;
+        color: var(--el-color-success);
       }
       .user-name {
         display: grid;

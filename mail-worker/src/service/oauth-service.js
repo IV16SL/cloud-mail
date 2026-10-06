@@ -1,7 +1,7 @@
 import BizError from "../error/biz-error";
 import orm from "../entity/orm";
 import {oauth} from "../entity/oauth";
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, and } from 'drizzle-orm';
 import userService from "./user-service";
 import loginService from "./login-service";
 import cryptoUtils from "../utils/crypto-utils";
@@ -45,6 +45,48 @@ const oauthService = {
 		const jwtToken = await loginService.login(c, { email, password: null }, true);
 
 		return { userInfo: oauthRow, token: jwtToken}
+	},
+
+	// 已登录用户绑定第三方账号：凭 OAuth 回调签发的一次性 bindToken，把
+	// 第三方身份关联到当前登录用户。需要 JWT 鉴权。
+	async bindCurrentUser(c, params, userId) {
+
+		const { bindToken } = params;
+
+		const oauthUserId = bindToken ? await c.env.kv.get(KvConst.OAUTH_BIND + bindToken) : null;
+
+		if (!oauthUserId) {
+			throw new BizError(t('oauthBindExpired'));
+		}
+
+		// 一次性使用
+		await c.env.kv.delete(KvConst.OAUTH_BIND + bindToken);
+
+		const oauthRow = await this.getById(c, oauthUserId);
+
+		if (!oauthRow) {
+			throw new BizError(t('oauthBindExpired'));
+		}
+
+		if (oauthRow.userId && oauthRow.userId !== userId) {
+			throw new BizError(t('oauthBoundByOther'));
+		}
+
+		await orm(c).update(oauth).set({ userId }).where(eq(oauth.oauthUserId, oauthUserId)).run();
+
+		return { userInfo: { ...oauthRow, userId } };
+	},
+
+	// 解绑第三方账号
+	async unbind(c, platform, userId) {
+		await orm(c).update(oauth).set({ userId: 0 })
+			.where(and(eq(oauth.platform, platform), eq(oauth.userId, userId))).run();
+	},
+
+	// 当前用户已绑定的第三方平台
+	async getBindings(c, userId) {
+		const rows = await orm(c).select({ platform: oauth.platform }).from(oauth).where(eq(oauth.userId, userId));
+		return rows.map(row => row.platform);
 	},
 
 	async linuxDoLogin(c, params) {

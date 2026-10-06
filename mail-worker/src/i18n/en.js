@@ -24,6 +24,7 @@ const en = {
 	disabledSend: 'Email sending feature is disabled',
 	oauthDisabled: 'This OAuth login is not enabled',
 	oauthBindExpired: 'Binding expired, please redo the third-party login',
+	oauthBoundByOther: 'This third-party account is already bound to another user',
 	daySendLimit: 'Daily send limit reached',
 	totalSendLimit: 'Total send limit reached',
 	daySendLack: 'Not enough remaining sends today',

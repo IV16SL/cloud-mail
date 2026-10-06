@@ -195,7 +195,7 @@ import {cvtR2Url} from "@/utils/convert.js";
 import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
-import {oauthBindUser, oauthLinuxDoLogin, oauthGithubLogin, oauthGoogleLogin} from "@/request/ouath.js";
+import {oauthBindUser, oauthBindCurrentUser, oauthLinuxDoLogin, oauthGithubLogin, oauthGoogleLogin} from "@/request/ouath.js";
 import {totpVerifyLogin} from "@/request/totp.js";
 import {startAuthentication, browserSupportsWebAuthn} from '@simplewebauthn/browser';
 import {passkeyLoginOptions, passkeyLoginVerify} from "@/request/passkey.js";
@@ -324,6 +324,7 @@ function oauthLogin(provider) {
   const clientId = settingStore.settings[provider + 'ClientId']
   const redirectUri = encodeURIComponent(window.location.origin + '/login')
   sessionStorage.setItem('oauthProvider', provider)
+  sessionStorage.removeItem('oauthBindMode')
   const authorizeUrls = {
     linuxdo: `https://connect.linux.do/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid+profile+email&state=${provider}`,
     github: `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email&state=${provider}`,
@@ -352,6 +353,30 @@ async function oauthGetUser() {
   window.history.replaceState({}, '', window.location.origin + window.location.pathname)
 
   loginFns[provider](code, window.location.origin + '/login').then(data => {
+
+    // 从个人信息页发起的绑定已有账号流程
+    if (sessionStorage.getItem('oauthBindMode')) {
+      sessionStorage.removeItem('oauthBindMode')
+      oauthLoading.value = false
+      if (data.bindToken) {
+        oauthBindCurrentUser({ bindToken: data.bindToken }).then(() => {
+          ElMessage({
+            message: t('oauthBindSuccess'),
+            type: 'success',
+            plain: true,
+          })
+          router.push('/settings')
+        }).catch(() => {})
+      } else {
+        ElMessage({
+          message: t('oauthAlreadyBound'),
+          type: 'warning',
+          plain: true,
+        })
+        router.push('/settings')
+      }
+      return;
+    }
 
     bindForm.bindToken = data.bindToken;
 

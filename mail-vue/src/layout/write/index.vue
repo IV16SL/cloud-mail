@@ -57,10 +57,26 @@
           <template #prefix>
             <div class="item-title">{{ $t('cc') }}</div>
           </template>
+          <template #tag="{ value }">
+            <span class="recv-tag">
+              <span class="recv-tag-email">{{ value }}</span>
+              <Icon v-if="form.pgpEncrypt && pgpKeyStatus[value] === true" icon="mdi:lock" class="pgp-tag-ok" :width="13" :height="13"/>
+              <Icon v-else-if="form.pgpEncrypt && pgpKeyStatus[value] === false" icon="mdi:lock-open" class="pgp-tag-fail" :width="13" :height="13"/>
+              <Icon v-else-if="form.pgpEncrypt" icon="mdi:loading" class="pgp-tag-loading" :width="13" :height="13"/>
+            </span>
+          </template>
         </el-input-tag>
         <el-input-tag v-if="showBcc" @add-tag="bccTagChange" tag-type="primary" size="default" v-model="form.bccEmail">
           <template #prefix>
             <div class="item-title">{{ $t('bcc') }}</div>
+          </template>
+          <template #tag="{ value }">
+            <span class="recv-tag">
+              <span class="recv-tag-email">{{ value }}</span>
+              <Icon v-if="form.pgpEncrypt && pgpKeyStatus[value] === true" icon="mdi:lock" class="pgp-tag-ok" :width="13" :height="13"/>
+              <Icon v-else-if="form.pgpEncrypt && pgpKeyStatus[value] === false" icon="mdi:lock-open" class="pgp-tag-fail" :width="13" :height="13"/>
+              <Icon v-else-if="form.pgpEncrypt" icon="mdi:loading" class="pgp-tag-loading" :width="13" :height="13"/>
+            </span>
           </template>
         </el-input-tag>
         <el-input v-model="form.subject" :placeholder="t('subject')" />
@@ -381,7 +397,7 @@ async function refreshPgpStatus() {
   await Promise.all(jobs)
 }
 
-watch(() => form.receiveEmail, () => {
+watch([() => form.receiveEmail, () => form.ccEmail, () => form.bccEmail], () => {
   if (form.pgpEncrypt) {
     refreshPgpStatus()
   }

@@ -63,11 +63,13 @@ watch(() => [uiStore.dark, settingStore.lang], () => {
 });
 
 const language = computed(() => {
-  if (locale.value === 'zh') {
-    return 'zh_CN'
+  switch (locale.value) {
+    case 'zh': return 'zh_CN'
+    case 'zh-TW': return 'zh_TW'
+    case 'ja': return 'ja'
+    case 'ko': return 'ko'
+    default: return 'en'
   }
-
-  return 'en'
 })
 
 function clearEditor() {

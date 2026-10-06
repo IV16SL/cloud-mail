@@ -38,7 +38,7 @@
               {{ userStore.user.email }}
             </div>
             <div class="detail-user-type">
-              <el-tag>{{ userStore.user.role.name }}</el-tag>
+              <el-tag>{{ roleDisplayName }}</el-tag>
             </div>
             <div class="action-info">
               <div>
@@ -85,6 +85,8 @@ import {useSettingStore} from "@/store/setting.js";
 import {hasPerm} from "@/perm/perm.js"
 import {useI18n} from "vue-i18n";
 import {setExtend} from "@/utils/day.js"
+import {toDayjsLocale} from "@/utils/day.js"
+import {displayRoleName} from "@/utils/role-utils.js"
 
 const {t} = useI18n();
 const route = useRoute();
@@ -94,6 +96,10 @@ const uiStore = useUiStore();
 const logoutLoading = ref(false)
 const userInfoShow = ref(false)
 const userinfoRef = ref({})
+
+const roleDisplayName = computed(() => {
+  return displayRoleName(userStore.user.role?.name, t)
+})
 
 const accountCount = computed(() => {
   return userStore.user.role.accountCount
@@ -183,7 +189,7 @@ async function copyEmail(email) {
 }
 
 function changeLang(lang) {
-  setExtend(lang === 'en' ? 'en' : 'zh-cn')
+  setExtend(toDayjsLocale(lang))
   settingStore.lang = lang
 }
 

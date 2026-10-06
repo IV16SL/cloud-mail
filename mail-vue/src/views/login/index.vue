@@ -168,7 +168,7 @@
         <el-input v-if="settingStore.settings.regKey === 2" v-model="bindForm.code"
                   :placeholder="$t('regKeyOptional')" type="text" autocomplete="off" @keyup.enter="bind"/>
         <el-button class="btn" type="primary" @click="bind" :loading="bindLoading"
-        >绑定
+        >{{$t('bind')}}
         </el-button>
       </div>
     </el-dialog>
@@ -384,7 +384,7 @@ async function oauthGetUser() {
       showBindForm.value = true
       oauthLoading.value = false
       ElMessage({
-        message: '请注册绑定一个邮箱',
+        message: t('oauthBindEmailHint'),
         type: 'warning',
         duration: 4000,
         plain: true,

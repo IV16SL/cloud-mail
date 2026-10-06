@@ -9,6 +9,8 @@
           <span class="sender">{{ $t('sender') }}:</span>
           <span class="sender-name">{{ form.name }}</span>
           <span class="send-email"><{{ form.sendEmail }}></span>
+          <span class="cc-toggle" :class="{ active: showCc }" @click="toggleCc">{{ $t('cc') }}</span>
+          <span class="cc-toggle" :class="{ active: showBcc }" @click="toggleBcc">{{ $t('bcc') }}</span>
         </div>
         <div @click="close" style="cursor: pointer;">
           <Icon icon="material-symbols-light:close-rounded" width="22" height="22"/>
@@ -51,8 +53,20 @@
             </div>
           </template>
         </el-input-tag>
+        <el-input-tag v-if="showCc" @add-tag="ccTagChange" tag-type="primary" size="default" v-model="form.ccEmail">
+          <template #prefix>
+            <div class="item-title">{{ $t('cc') }}</div>
+          </template>
+        </el-input-tag>
+        <el-input-tag v-if="showBcc" @add-tag="bccTagChange" tag-type="primary" size="default" v-model="form.bccEmail">
+          <template #prefix>
+            <div class="item-title">{{ $t('bcc') }}</div>
+          </template>
+        </el-input-tag>
         <el-input v-model="form.subject" :placeholder="t('subject')" />
-        <tinyEditor :def-value="defValue" ref="editor" :pgp-active="form.pgpEncrypt" @change="change" @focus="focusChange" @pgp-toggle="togglePgp" />
+        <div class="editor-wrap">
+          <tinyEditor :def-value="defValue" ref="editor" :pgp-active="form.pgpEncrypt" @change="change" @focus="focusChange" @pgp-toggle="togglePgp" />
+        </div>
         <div class="button-item">
           <div class="att-add" @click="chooseFile">
             <Icon icon="iconamoon:attachment-fill" width="24" height="24"/>
@@ -157,6 +171,8 @@ const backReply = reactive({
 const form = reactive({
   sendEmail: '',
   receiveEmail: [],
+  ccEmail: [],
+  bccEmail: [],
   accountId: -1,
   name: '',
   subject: '',
@@ -170,6 +186,41 @@ const form = reactive({
 })
 
 const selectRecipientList = ref([])
+
+const showCc = ref(false)
+const showBcc = ref(false)
+
+function toggleCc() {
+  showCc.value = !showCc.value
+  if (!showCc.value) form.ccEmail = []
+}
+
+function toggleBcc() {
+  showBcc.value = !showBcc.value
+  if (!showBcc.value) form.bccEmail = []
+}
+
+function addEmailsToList(list, val) {
+  const emails = Array.from(new Set(
+      val.split(/[,，]/).map(item => item.trim()).filter(item => item)
+  ));
+
+  list.splice(list.length - 1, 1)
+
+  emails.forEach(email => {
+    if (isEmail(email) && !list.includes(email)) {
+      list.push(email)
+    }
+  })
+}
+
+function ccTagChange(val) {
+  addEmailsToList(form.ccEmail, val)
+}
+
+function bccTagChange(val) {
+  addEmailsToList(form.bccEmail, val)
+}
 
 const contacts = computed(() => writerStore.sendRecipientRecord.map(item => ({email: item})))
 
@@ -310,7 +361,7 @@ function togglePgp() {
 
 async function refreshPgpStatus() {
   const jobs = []
-  for (const email of form.receiveEmail) {
+  for (const email of [...form.receiveEmail, ...form.ccEmail, ...form.bccEmail]) {
     if (pgpKeyCache[email] !== undefined) {
       pgpKeyStatus.value[email] = pgpKeyCache[email]
       continue
@@ -389,7 +440,8 @@ async function sendEmail() {
 
   if (form.pgpEncrypt) {
     await refreshPgpStatus()
-    const missing = form.receiveEmail.filter(email => pgpKeyStatus.value[email] !== true)
+    const allRecipients = [...form.receiveEmail, ...form.ccEmail, ...form.bccEmail]
+    const missing = allRecipients.filter(email => pgpKeyStatus.value[email] !== true)
     if (missing.length > 0) {
       ElMessage({
         message: t('pgpKeyNotFound', {msg: missing.join(', ')}),
@@ -471,6 +523,10 @@ function addRecipientRecord() {
 
 function resetForm() {
   form.receiveEmail = []
+  form.ccEmail = []
+  form.bccEmail = []
+  showCc.value = false
+  showBcc.value = false
   form.subject = ''
   form.content = ''
   form.manyType = null
@@ -585,6 +641,8 @@ function open() {
 
 function openDraft(draft) {
   Object.assign(form, {...draft})
+  showCc.value = form.ccEmail?.length > 0
+  showBcc.value = form.bccEmail?.length > 0
   defValue.value = ''
   setTimeout(() => defValue.value = form.content)
   show.value = true;
@@ -721,7 +779,7 @@ function close() {
       .title-left {
         align-items: center;
         display: grid;
-        grid-template-columns: auto auto auto 1fr;
+        grid-template-columns: auto auto auto 1fr auto auto;
       }
 
       .title-text {
@@ -744,6 +802,23 @@ function close() {
         overflow: hidden;
       }
 
+      .cc-toggle {
+        margin-left: 10px;
+        font-size: 13px;
+        color: var(--el-text-color-secondary);
+        cursor: pointer;
+        white-space: nowrap;
+
+        &:hover {
+          color: var(--el-color-primary);
+        }
+
+        &.active {
+          color: var(--el-color-primary);
+          font-weight: bold;
+        }
+      }
+
 
       div {
         display: flex;
@@ -753,9 +828,16 @@ function close() {
 
     .container {
       height: 100%;
-      display: grid;
-      grid-template-rows: auto auto 1fr auto;
+      display: flex;
+      flex-direction: column;
       gap: 15px;
+
+      .editor-wrap {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
 
       .recv-tag {
         display: inline-flex;

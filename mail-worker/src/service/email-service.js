@@ -256,6 +256,8 @@ const emailService = {
 			sendType, //发件类型
 			emailId, //邮件id，如果是回复邮件会带
 			receiveEmail, //收件人邮箱
+			ccEmail = [], //抄送邮箱
+			bccEmail = [], //密送邮箱
 			text, //邮件纯文本
 			content, //邮件内容
 			subject, //邮件标题
@@ -276,7 +278,8 @@ const emailService = {
 		const roleRow = await roleService.selectById(c, userRow.type);
 
 		//判断接收方是不是全部为站内邮箱
-		const allInternal = receiveEmail.every(email => {
+		const allRecipients = [...receiveEmail, ...ccEmail, ...bccEmail];
+		const allInternal = allRecipients.every(email => {
 			const domain = '@' + emailUtils.getDomain(email);
 			return domainList.includes(domain);
 		});
@@ -303,7 +306,7 @@ const emailService = {
 				if (roleRow.sendType === 'count') throw new BizError(t('totalSendLimit'), 403);
 			}
 
-			if (userRow.sendCount + receiveEmail.length > roleRow.sendCount) {
+			if (userRow.sendCount + allRecipients.length > roleRow.sendCount) {
 				if (roleRow.sendType === 'day') throw new BizError(t('daySendLack'), 403);
 				if (roleRow.sendType === 'count') throw new BizError(t('totalSendLack'), 403);
 			}
@@ -366,7 +369,7 @@ const emailService = {
 
 		if (pgpEncrypt && !allInternal) {
 			const plainText = text || pgpService.htmlToText(html);
-			const pgpResult = await pgpService.encryptOutgoing(c, receiveEmail, plainText, sendAttachments);
+			const pgpResult = await pgpService.encryptOutgoing(c, allRecipients, plainText, sendAttachments);
 			sendText = pgpResult.text;
 			sendHtml = undefined;
 			sendAttachments = pgpResult.attachments;
@@ -380,6 +383,8 @@ const emailService = {
 					name,
 					accountEmail: accountRow.email,
 					receiveEmail,
+					ccEmail,
+					bccEmail,
 					subject,
 					text: sendText,
 					html: sendHtml,
@@ -392,6 +397,8 @@ const emailService = {
 					name,
 					accountEmail: accountRow.email,
 					receiveEmail,
+					ccEmail,
+					bccEmail,
 					subject,
 					text: sendText,
 					html: sendHtml,
@@ -435,6 +442,8 @@ const emailService = {
 		});
 
 		emailData.recipient = JSON.stringify(recipient);
+		emailData.cc = JSON.stringify(ccEmail);
+		emailData.bcc = JSON.stringify(bccEmail);
 
 		if (sendType === 'reply') {
 			emailData.inReplyTo = emailRow.messageId;
@@ -443,7 +452,7 @@ const emailService = {
 
 		//如果权限有发送次数增加用户发送次数
 		if (roleRow.sendCount && roleRow.sendType !== 'internal') {
-			await userService.incrUserSendCount(c, receiveEmail.length, userId);
+			await userService.incrUserSendCount(c, allRecipients.length, userId);
 		}
 
 		//保存到数据库并返回结果
@@ -494,6 +503,14 @@ const emailService = {
 			subject: params.subject
 		};
 
+		if (params.ccEmail?.length > 0) {
+			sendForm.cc = [...params.ccEmail];
+		}
+
+		if (params.bccEmail?.length > 0) {
+			sendForm.bcc = [...params.bccEmail];
+		}
+
 		if (params.text) {
 			sendForm.text = params.text;
 		}
@@ -534,6 +551,14 @@ const emailService = {
 			html: params.html,
 			attachments: await this.toResendAttachments(params.attachments)
 		};
+
+		if (params.ccEmail?.length > 0) {
+			sendForm.cc = [...params.ccEmail];
+		}
+
+		if (params.bccEmail?.length > 0) {
+			sendForm.bcc = [...params.bccEmail];
+		}
 
 		if (params.sendType === 'reply') {
 			sendForm.headers = {

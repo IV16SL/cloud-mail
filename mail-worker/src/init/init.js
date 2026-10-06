@@ -34,6 +34,7 @@ const dbInit = {
 		await this.v3_3DB(c);
 		await this.v3_4DB(c);
 		await this.v3_5DB(c);
+		await this.v3_6DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
 	},
@@ -47,6 +48,14 @@ const dbInit = {
 				console.warn(`跳过字段：${e.message}`);
 			}
 		}
+	},
+
+	async v3_6DB(c) {
+		// 抄送 / 密送：存 JSON 数组
+		await this.addColumns(c, [
+			['email', 'cc', `TEXT NOT NULL DEFAULT '[]'`],
+			['email', 'bcc', `TEXT NOT NULL DEFAULT '[]'`],
+		]);
 	},
 
 	async v3_5DB(c) {

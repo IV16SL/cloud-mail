@@ -27,6 +27,8 @@
                 </div>
               </div>
               <div class="receive"><span class="source">{{$t('recipient')}}</span><span class="receive-email">{{  formateReceive(email.recipient) }}</span></div>
+              <div class="receive" v-if="hasAddrList(email.cc)"><span class="source">{{$t('cc')}}</span><span class="receive-email">{{ formatAddrList(email.cc) }}</span></div>
+              <div class="receive" v-if="hasAddrList(email.bcc)"><span class="source">{{$t('bcc')}}</span><span class="receive-email">{{ formatAddrList(email.bcc) }}</span></div>
               <div class="date">
                 <div>{{ formatDetailDate(email.createTime) }}</div>
               </div>
@@ -399,6 +401,24 @@ function formateReceive(recipient) {
   if (!recipient) return ''
   recipient = JSON.parse(recipient)
   return recipient.map(item => item.address).join(', ')
+}
+
+function parseAddrList(val) {
+  if (!val) return []
+  try {
+    const arr = JSON.parse(val)
+    return Array.isArray(arr) ? arr : []
+  } catch {
+    return []
+  }
+}
+
+function hasAddrList(val) {
+  return parseAddrList(val).length > 0
+}
+
+function formatAddrList(val) {
+  return parseAddrList(val).join(', ')
 }
 
 function changeStar() {

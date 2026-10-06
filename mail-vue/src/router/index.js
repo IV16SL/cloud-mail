@@ -109,7 +109,7 @@ router.beforeEach((to, from, next) => {
         return
     }
 
-    if (token && to.path.startsWith('/login')) {
+    if (token && to.path.startsWith('/login') && !to.query.code) {
         return next(from.path)
     }
 

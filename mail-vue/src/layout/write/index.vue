@@ -819,11 +819,15 @@ function close() {
       }
 
       .cc-toggle {
-        margin-left: 10px;
+        margin-left: 20px;
         font-size: 13px;
         color: var(--el-text-color-secondary);
         cursor: pointer;
         white-space: nowrap;
+
+        + .cc-toggle {
+          margin-left: 10px;
+        }
 
         &:hover {
           color: var(--el-color-primary);

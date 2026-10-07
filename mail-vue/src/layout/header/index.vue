@@ -519,6 +519,7 @@ function formatName(email) {
 /* 手机端：隐藏内联搜索框，改用工具栏搜索按钮 + 弹窗 */
 .mobile-search-btn {
   display: none;
+  font-size: 22px;
 }
 @media (max-width: 768px) {
   .header-search {

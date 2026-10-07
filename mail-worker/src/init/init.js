@@ -35,6 +35,7 @@ const dbInit = {
 		await this.v3_4DB(c);
 		await this.v3_5DB(c);
 		await this.v3_6DB(c);
+		await this.v3_7DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
 	},
@@ -55,6 +56,13 @@ const dbInit = {
 		await this.addColumns(c, [
 			['email', 'cc', `TEXT NOT NULL DEFAULT '[]'`],
 			['email', 'bcc', `TEXT NOT NULL DEFAULT '[]'`],
+		]);
+	},
+
+	async v3_7DB(c) {
+		// 用户头像：base64 data URL
+		await this.addColumns(c, [
+			['user', 'avatar', `TEXT NOT NULL DEFAULT ''`],
 		]);
 	},
 

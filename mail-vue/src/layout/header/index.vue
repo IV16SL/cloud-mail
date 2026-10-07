@@ -446,6 +446,7 @@ function formatName(email) {
   justify-content: flex-start;
   min-width: 0;
   width: 100%;
+  overflow: hidden;
   /* 对齐前隐藏，避免从左边跳到中间的闪烁 */
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -457,7 +458,8 @@ function formatName(email) {
   .search-box {
     width: 100%;
     max-width: 420px;
-    min-width: 200px;
+    min-width: 0;
+    flex-shrink: 1;
   }
 
   @media (max-width: 768px) {

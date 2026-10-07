@@ -197,10 +197,9 @@ const pgpService = {
 			}
 			const armored = await this.encryptBinary(content, attachment.filename || 'attachment', armoredKeys);
 			encryptedAttachments.push({
-				...attachment,
 				content: new TextEncoder().encode(armored),
-				contentId: null,
-				filename: (attachment.filename || 'attachment') + '.pgp'
+				filename: (attachment.filename || 'attachment') + '.pgp',
+				mimeType: attachment.mimeType || attachment.contentType || 'application/octet-stream'
 			});
 		}
 

@@ -41,6 +41,8 @@ const en = {
 	minEmailPrefix: 'Email must be at least {{msg}} characters',
 	banEmailPrefix: 'Invalid characters in email address',
 	pwdMinLength: 'Password must be at least 6 characters',
+	currentPwdWrong: 'Current password is incorrect',
+	emptyPwd: 'Password cannot be empty',
 	notEmailDomain: 'Invalid email domain',
 	emptyRegKey: 'Invite code cannot be empty',
 	notExistRegKey: 'Invite code does not exist',

@@ -35,14 +35,16 @@
       <el-dropdown ref="userinfoRef" @visible-change="e => userInfoShow = e" :teleported="false" popper-class="detail-dropdown">
         <div class="avatar" @click="userInfoHide" >
           <div class="avatar-text">
-            <div>{{ formatName(userStore.user.email) }}</div>
+            <img v-if="userStore.user.avatar" :src="userStore.user.avatar" class="avatar-img" />
+            <div v-else>{{ formatName(userStore.user.email) }}</div>
           </div>
           <Icon class="setting-icon" icon="mingcute:down-small-fill" width="24" height="24"/>
         </div>
         <template #dropdown>
           <div class="user-details">
             <div class="details-avatar">
-              {{ formatName(userStore.user.email) }}
+              <img v-if="userStore.user.avatar" :src="userStore.user.avatar" class="avatar-img" />
+              <span v-else>{{ formatName(userStore.user.email) }}</span>
             </div>
             <div class="user-name">
               {{ userStore.user.name }}
@@ -116,14 +118,9 @@ let resizeTimer = null
 
 function alignSearchBox() {
   if (!searchBoxRef.value) return
-  // 小屏：以蓝色写信按钮左边缘为基准
+  // 小屏：不强制对齐，自然伸缩避免挤坏布局
   if (window.innerWidth <= 768) {
-    const writerEl = document.querySelector('.header .writer-box')
-    if (!writerEl) return
-    const writerLeft = writerEl.getBoundingClientRect().left
-    const boxLeft = searchBoxRef.value.getBoundingClientRect().left
-    const pad = writerLeft - boxLeft
-    searchBoxRef.value.style.paddingLeft = pad + 'px'
+    searchBoxRef.value.style.paddingLeft = '0px'
     searchBoxRef.value.classList.add('aligned')
     return
   }
@@ -448,6 +445,7 @@ function formatName(email) {
   align-items: center;
   justify-content: flex-start;
   min-width: 0;
+  width: 100%;
   /* 对齐前隐藏，避免从左边跳到中间的闪烁 */
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -459,6 +457,7 @@ function formatName(email) {
   .search-box {
     width: 100%;
     max-width: 420px;
+    min-width: 200px;
   }
 
   @media (max-width: 768px) {
@@ -562,6 +561,13 @@ function formatName(email) {
       align-items: center;
       border-radius: 8px;
       border: 1px solid var(--dark-border);
+      overflow: hidden;
+
+      .avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
     }
 
     .setting-icon {

@@ -3,6 +3,23 @@
     <div class="container">
       <div class="title">{{$t('profile')}}</div>
       <div class="item">
+        <div>{{$t('avatar')}}</div>
+        <div class="avatar-row">
+          <div class="avatar-preview">
+            <img v-if="userStore.user.avatar" :src="userStore.user.avatar" class="avatar-img" />
+            <div v-else class="avatar-text">{{ formatName(userStore.user.email) }}</div>
+          </div>
+          <el-upload
+            :show-file-list="false"
+            :before-upload="beforeAvatarUpload"
+            accept="image/*"
+          >
+            <el-button type="primary" size="small">{{$t('changeAvatar')}}</el-button>
+          </el-upload>
+          <el-button v-if="userStore.user.avatar" size="small" @click="removeAvatar">{{$t('removeAvatar')}}</el-button>
+        </div>
+      </div>
+      <div class="item">
         <div>{{$t('username')}}</div>
         <div>
           <span v-if="setNameShow" class="edit-name-input">
@@ -87,6 +104,7 @@
     </div>
     <el-dialog v-model="pwdShow" :title="$t('changePassword')" width="340">
       <div class="update-pwd">
+        <el-input type="password" :placeholder="$t('currentPassword')" v-model="form.currentPassword" autocomplete="off" @keyup.enter="submitPwd"/>
         <el-input type="password" :placeholder="$t('newPassword')" v-model="form.password" autocomplete="off" @keyup.enter="submitPwd"/>
         <el-input type="password" :placeholder="$t('confirmPassword')" v-model="form.newPwd" autocomplete="off" @keyup.enter="submitPwd"/>
         <el-button type="primary" :loading="setPwdLoading" @click="submitPwd">{{$t('save')}}</el-button>
@@ -200,7 +218,7 @@
 <script setup>
 import {reactive, ref, defineOptions, computed} from 'vue'
 import {ElMessageBox} from "element-plus";
-import {resetPassword, userDelete, verifyPassword} from "@/request/my.js";
+import {resetPassword, userDelete, verifyPassword, updateAvatar} from "@/request/my.js";
 import {useUserStore} from "@/store/user.js";
 import router from "@/router/index.js";
 import {accountSetName} from "@/request/account.js";
@@ -231,6 +249,46 @@ defineOptions({
 function showSetName() {
   accountName.value = userStore.user.name
   setNameShow.value = true
+}
+
+function formatName(email) {
+  if (!email) return '?'
+  return email.charAt(0).toUpperCase()
+}
+
+function beforeAvatarUpload(file) {
+  // 压缩到 200x200，转 base64
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      const size = 200
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d')
+      // 居中裁剪为正方形
+      const minDim = Math.min(img.width, img.height)
+      const sx = (img.width - minDim) / 2
+      const sy = (img.height - minDim) / 2
+      ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+      updateAvatar(dataUrl).then(() => {
+        userStore.user.avatar = dataUrl
+        ElMessage({ message: t('avatarUpdated'), type: 'success', plain: true })
+      })
+    }
+    img.src = e.target.result
+  }
+  reader.readAsDataURL(file)
+  return false // 阻止自动上传
+}
+
+function removeAvatar() {
+  updateAvatar('').then(() => {
+    userStore.user.avatar = ''
+    ElMessage({ message: t('avatarRemoved'), type: 'success', plain: true })
+  })
 }
 
 function setName() {
@@ -289,6 +347,7 @@ const passkeyLoading = ref(false)
 const passkeyAddLoading = ref(false)
 const passkeys = ref([])
 const form = reactive({
+  currentPassword: '',
   password: '',
   newPwd: '',
 })
@@ -641,6 +700,15 @@ function delPgpKey() {
 function submitPwd() {
   if (setPwdLoading.value) return
 
+  if (!form.currentPassword) {
+    ElMessage({
+      message: t('emptyPwdMsg'),
+      type: 'error',
+      plain: true,
+    })
+    return
+  }
+
   if (!form.password) {
     ElMessage({
       message: t('emptyPwdMsg'),
@@ -669,14 +737,15 @@ function submitPwd() {
   }
 
   setPwdLoading.value = true
-  resetPassword(form.password).then(() => {
+  resetPassword(form.currentPassword, form.password).then(() => {
     ElMessage({
-      message: t('saveSuccessMsg'),
+      message: t('pwdChanged'),
       type: 'success',
       plain: true,
     })
     pwdShow.value = false
     setPwdLoading.value = false
+    form.currentPassword = ''
     form.password = ''
     form.newPwd = ''
   }).catch(() => {
@@ -692,6 +761,36 @@ function submitPwd() {
 
   @media (max-width: 767px) {
     padding: 30px 30px;
+  }
+
+  .avatar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .avatar-preview {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--el-color-primary-light-8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    .avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .avatar-text {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--el-color-primary);
+    }
   }
 
   .update-pwd {

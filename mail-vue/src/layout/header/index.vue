@@ -506,16 +506,6 @@ function formatName(email) {
   }
 }
 
-/* 手机端 header 网格：搜索框那一列允许收缩到 0 */
-@media (max-width: 768px) {
-  .header {
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
-  }
-  .header.not-send {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-  }
-}
-
 /* 手机端：隐藏内联搜索框，改用工具栏搜索按钮 + 弹窗 */
 .mobile-search-btn {
   display: none;
@@ -528,12 +518,12 @@ function formatName(email) {
   .mobile-search-btn {
     display: flex;
   }
-  /* 手机端 header 不再需要给搜索框留列 */
+  /* 手机端 header 不再需要给搜索框留列，但保留 1fr 空列把工具栏顶到右边 */
   .header {
-    grid-template-columns: auto auto auto;
+    grid-template-columns: auto auto 1fr auto;
   }
   .header.not-send {
-    grid-template-columns: auto auto;
+    grid-template-columns: auto 1fr auto;
   }
 }
 

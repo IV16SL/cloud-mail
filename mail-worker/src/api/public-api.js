@@ -18,7 +18,7 @@ app.post('/public/addUser', async (c) => {
 });
 
 // 服务器能力探测（供客户端判断 fork 独有功能，主仓库无此接口返回 404）
-app.get('/capabilities', (c) => {
+app.get('/public/capabilities', (c) => {
 	return c.json(result.ok({
 		passkey: true,
 		totp: true,

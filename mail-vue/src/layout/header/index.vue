@@ -466,7 +466,20 @@ function formatName(email) {
     padding-left: 0;
     .search-box {
       max-width: none;
+      /* 手机端强制不溢出，避免盖住头像 */
+      width: 100%;
+      min-width: 0;
     }
+  }
+}
+
+/* 手机端 header 网格：搜索框那一列允许收缩到 0 */
+@media (max-width: 768px) {
+  .header {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
+  }
+  .header.not-send {
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
 }
 

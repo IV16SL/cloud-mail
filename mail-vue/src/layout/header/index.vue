@@ -23,6 +23,9 @@
       </el-input>
     </div>
     <div class="toolbar">
+      <div class="mobile-search-btn icon-item" @click="mobileSearchVisible = true">
+        <Icon icon="iconoir:search"/>
+      </div>
       <div v-if="uiStore.dark" class="sun-icon icon-item" @click="openDark($event)">
         <Icon icon="mingcute:sun-fill"/>
       </div>
@@ -84,6 +87,29 @@
         </template>
       </el-dropdown>
     </div>
+    <!-- 手机端搜索弹窗 -->
+    <el-dialog
+      v-model="mobileSearchVisible"
+      title="搜索邮件"
+      width="90%"
+      :show-close="true"
+      class="mobile-search-dialog"
+    >
+      <el-input
+        v-model="searchKeyword"
+        placeholder="搜索主题、发件人"
+        clearable
+        @keyup.enter="doMobileSearch"
+      >
+        <template #prefix>
+          <Icon icon="iconoir:search" width="16" height="16"/>
+        </template>
+      </el-input>
+      <template #footer>
+        <el-button @click="mobileSearchVisible = false">取消</el-button>
+        <el-button type="primary" @click="doMobileSearch">搜索</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -113,6 +139,7 @@ const userInfoShow = ref(false)
 const userinfoRef = ref({})
 const searchKeyword = ref('')
 const searchBoxRef = ref(null)
+const mobileSearchVisible = ref(false)
 let alignTimer = null
 let resizeTimer = null
 
@@ -308,6 +335,12 @@ function doSearch() {
   uiStore.globalSearchTick++
 }
 
+/** 手机端弹窗搜索：执行后关弹窗 */
+function doMobileSearch() {
+  doSearch()
+  mobileSearchVisible.value = false
+}
+
 function changeAside() {
   uiStore.asideShow = !uiStore.asideShow
 }
@@ -480,6 +513,26 @@ function formatName(email) {
   }
   .header.not-send {
     grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+}
+
+/* 手机端：隐藏内联搜索框，改用工具栏搜索按钮 + 弹窗 */
+.mobile-search-btn {
+  display: none;
+}
+@media (max-width: 768px) {
+  .header-search {
+    display: none;
+  }
+  .mobile-search-btn {
+    display: flex;
+  }
+  /* 手机端 header 不再需要给搜索框留列 */
+  .header {
+    grid-template-columns: auto auto auto;
+  }
+  .header.not-send {
+    grid-template-columns: auto auto;
   }
 }
 

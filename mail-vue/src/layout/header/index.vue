@@ -9,7 +9,7 @@
         <Icon icon="material-symbols:edit-outline-sharp" width="22" height="22"/>
       </div>
     </div>
-    <div class="header-search">
+    <div class="header-search" ref="searchBoxRef">
       <el-input
         v-model="searchKeyword"
         :placeholder="$t('searchByContent')"
@@ -93,7 +93,7 @@ import {Icon} from "@iconify/vue";
 import {useUiStore} from "@/store/ui.js";
 import {useUserStore} from "@/store/user.js";
 import {useRoute} from "vue-router";
-import {computed, ref} from "vue";
+import {computed, ref, onMounted, onUnmounted} from "vue";
 import {useSettingStore} from "@/store/setting.js";
 import {hasPerm} from "@/perm/perm.js"
 import {useI18n} from "vue-i18n";
@@ -110,6 +110,39 @@ const logoutLoading = ref(false)
 const userInfoShow = ref(false)
 const userinfoRef = ref({})
 const searchKeyword = ref('')
+const searchBoxRef = ref(null)
+
+function alignSearchBox() {
+  if (!searchBoxRef.value) return
+  // 小屏：以蓝色写信按钮左边缘为基准
+  if (window.innerWidth <= 768) {
+    const writerEl = document.querySelector('.header .writer-box')
+    if (!writerEl) return
+    const writerLeft = writerEl.getBoundingClientRect().left
+    const boxLeft = searchBoxRef.value.getBoundingClientRect().left
+    // 搜索框移到写信按钮的左边缘位置（负值左移）
+    const pad = writerLeft - boxLeft
+    searchBoxRef.value.style.paddingLeft = pad + 'px'
+    return
+  }
+  // 桌面：以邮件标题左边缘为基准
+  const subjectEl = document.querySelector('.email-row .email-subject')
+  if (!subjectEl) return
+  const subjectLeft = subjectEl.getBoundingClientRect().left
+  const boxLeft = searchBoxRef.value.getBoundingClientRect().left
+  const pad = Math.max(0, subjectLeft - boxLeft)
+  searchBoxRef.value.style.paddingLeft = pad + 'px'
+}
+
+onMounted(() => {
+  // 邮件列表渲染后对齐，窗口变化时重新对齐
+  setTimeout(alignSearchBox, 500)
+  window.addEventListener('resize', alignSearchBox)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', alignSearchBox)
+})
 
 const roleDisplayName = computed(() => {
   return displayRoleName(userStore.user.role?.name, t)
@@ -398,11 +431,18 @@ function formatName(email) {
   align-items: center;
   justify-content: flex-start;
   min-width: 0;
-  padding-left: 120px;
+  /* padding-left 由 JS 动态计算，对齐邮件标题 */
 
   .search-box {
-    width: 420px;
-    max-width: 100%;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  @media (max-width: 768px) {
+    padding-left: 0;
+    .search-box {
+      max-width: none;
+    }
   }
 }
 

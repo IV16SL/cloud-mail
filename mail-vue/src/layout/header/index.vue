@@ -111,6 +111,8 @@ const userInfoShow = ref(false)
 const userinfoRef = ref({})
 const searchKeyword = ref('')
 const searchBoxRef = ref(null)
+let alignTimer = null
+let resizeTimer = null
 
 function alignSearchBox() {
   if (!searchBoxRef.value) return
@@ -120,9 +122,9 @@ function alignSearchBox() {
     if (!writerEl) return
     const writerLeft = writerEl.getBoundingClientRect().left
     const boxLeft = searchBoxRef.value.getBoundingClientRect().left
-    // 搜索框移到写信按钮的左边缘位置（负值左移）
     const pad = writerLeft - boxLeft
     searchBoxRef.value.style.paddingLeft = pad + 'px'
+    searchBoxRef.value.classList.add('aligned')
     return
   }
   // 桌面：以邮件标题左边缘为基准
@@ -132,16 +134,31 @@ function alignSearchBox() {
   const boxLeft = searchBoxRef.value.getBoundingClientRect().left
   const pad = Math.max(0, subjectLeft - boxLeft)
   searchBoxRef.value.style.paddingLeft = pad + 'px'
+  searchBoxRef.value.classList.add('aligned')
+}
+
+function scheduleAlign() {
+  // 防抖：等布局稳定后再量，避免缩小窗口时的中间态错位
+  clearTimeout(alignTimer)
+  alignTimer = setTimeout(alignSearchBox, 150)
 }
 
 onMounted(() => {
-  // 邮件列表渲染后对齐，窗口变化时重新对齐
-  setTimeout(alignSearchBox, 500)
-  window.addEventListener('resize', alignSearchBox)
+  // 邮件列表渲染后对齐
+  scheduleAlign()
+  // 列表可能延迟加载，多试几次
+  setTimeout(scheduleAlign, 800)
+  setTimeout(scheduleAlign, 1500)
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(scheduleAlign, 200)
+  })
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', alignSearchBox)
+  window.removeEventListener('resize', scheduleAlign)
+  clearTimeout(alignTimer)
+  clearTimeout(resizeTimer)
 })
 
 const roleDisplayName = computed(() => {
@@ -431,6 +448,12 @@ function formatName(email) {
   align-items: center;
   justify-content: flex-start;
   min-width: 0;
+  /* 对齐前隐藏，避免从左边跳到中间的闪烁 */
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  &.aligned {
+    opacity: 1;
+  }
   /* padding-left 由 JS 动态计算，对齐邮件标题 */
 
   .search-box {

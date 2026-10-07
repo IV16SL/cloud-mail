@@ -9,6 +9,19 @@
         <Icon icon="material-symbols:edit-outline-sharp" width="22" height="22"/>
       </div>
     </div>
+    <div class="header-search">
+      <el-input
+        v-model="searchKeyword"
+        :placeholder="$t('searchByContent')"
+        class="search-box"
+        @keyup.enter="doSearch"
+        clearable
+      >
+        <template #prefix>
+          <Icon icon="iconoir:search" width="16" height="16" @click="doSearch" style="cursor: pointer"/>
+        </template>
+      </el-input>
+    </div>
     <div class="toolbar">
       <div v-if="uiStore.dark" class="sun-icon icon-item" @click="openDark($event)">
         <Icon icon="mingcute:sun-fill"/>
@@ -96,6 +109,7 @@ const uiStore = useUiStore();
 const logoutLoading = ref(false)
 const userInfoShow = ref(false)
 const userinfoRef = ref({})
+const searchKeyword = ref('')
 
 const roleDisplayName = computed(() => {
   return displayRoleName(userStore.user.role?.name, t)
@@ -242,6 +256,11 @@ function openSend() {
   uiStore.writerRef.open()
 }
 
+function doSearch() {
+  uiStore.globalSearchKeyword = searchKeyword.value.trim()
+  uiStore.globalSearchTick++
+}
+
 function changeAside() {
   uiStore.asideShow = !uiStore.asideShow
 }
@@ -367,11 +386,24 @@ function formatName(email) {
   display: grid;
   height: 100%;
   gap: 10px;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: auto auto 1fr auto;
 }
 
 .header.not-send {
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
+}
+
+.header-search {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  padding-left: 120px;
+
+  .search-box {
+    width: 420px;
+    max-width: 100%;
+  }
 }
 
 .writer-box {

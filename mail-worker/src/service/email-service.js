@@ -376,7 +376,7 @@ const emailService = {
 		let sendHtml = html;
 		let sendAttachments = [...imageDataList, ...attachments];
 
-		if (pgpEncrypt && !allInternal) {
+		if (pgpEncrypt) {
 			const plainText = text || pgpService.htmlToText(html);
 			const pgpResult = await pgpService.encryptOutgoing(c, allRecipients, plainText, sendAttachments);
 			sendText = pgpResult.text;

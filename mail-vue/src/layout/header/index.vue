@@ -9,21 +9,8 @@
         <Icon icon="material-symbols:edit-outline-sharp" width="22" height="22"/>
       </div>
     </div>
-    <div class="header-search" ref="searchBoxRef">
-      <el-input
-        v-model="searchKeyword"
-        :placeholder="$t('searchByContent')"
-        class="search-box"
-        @keyup.enter="doSearch"
-        clearable
-      >
-        <template #prefix>
-          <Icon icon="iconoir:search" width="16" height="16" @click="doSearch" style="cursor: pointer"/>
-        </template>
-      </el-input>
-    </div>
     <div class="toolbar">
-      <div class="mobile-search-btn icon-item" @click="mobileSearchVisible = true">
+      <div class="search-btn icon-item" @click="searchVisible = true">
         <Icon icon="iconoir:search"/>
       </div>
       <div v-if="uiStore.dark" class="sun-icon icon-item" @click="openDark($event)">
@@ -87,27 +74,28 @@
         </template>
       </el-dropdown>
     </div>
-    <!-- 手机端搜索弹窗 -->
+    <!-- 搜索弹窗 -->
     <el-dialog
-      v-model="mobileSearchVisible"
+      v-model="searchVisible"
       title="搜索邮件"
-      width="90%"
+      width="420px"
       :show-close="true"
-      class="mobile-search-dialog"
+      class="search-dialog"
     >
       <el-input
         v-model="searchKeyword"
         placeholder="搜索主题、发件人"
         clearable
-        @keyup.enter="doMobileSearch"
+        @keyup.enter="doDialogSearch"
       >
         <template #prefix>
           <Icon icon="iconoir:search" width="16" height="16"/>
         </template>
       </el-input>
       <template #footer>
-        <el-button @click="mobileSearchVisible = false">取消</el-button>
-        <el-button type="primary" @click="doMobileSearch">搜索</el-button>
+        <el-button @click="doResetSearch">重置</el-button>
+        <el-button @click="searchVisible = false">取消</el-button>
+        <el-button type="primary" @click="doDialogSearch">搜索</el-button>
       </template>
     </el-dialog>
   </div>
@@ -138,52 +126,7 @@ const logoutLoading = ref(false)
 const userInfoShow = ref(false)
 const userinfoRef = ref({})
 const searchKeyword = ref('')
-const searchBoxRef = ref(null)
-const mobileSearchVisible = ref(false)
-let alignTimer = null
-let resizeTimer = null
-
-function alignSearchBox() {
-  if (!searchBoxRef.value) return
-  // 小屏：不强制对齐，自然伸缩避免挤坏布局
-  if (window.innerWidth <= 768) {
-    searchBoxRef.value.style.paddingLeft = '0px'
-    searchBoxRef.value.classList.add('aligned')
-    return
-  }
-  // 桌面：以邮件标题左边缘为基准
-  const subjectEl = document.querySelector('.email-row .email-subject')
-  if (!subjectEl) return
-  const subjectLeft = subjectEl.getBoundingClientRect().left
-  const boxLeft = searchBoxRef.value.getBoundingClientRect().left
-  const pad = Math.max(0, subjectLeft - boxLeft)
-  searchBoxRef.value.style.paddingLeft = pad + 'px'
-  searchBoxRef.value.classList.add('aligned')
-}
-
-function scheduleAlign() {
-  // 防抖：等布局稳定后再量，避免缩小窗口时的中间态错位
-  clearTimeout(alignTimer)
-  alignTimer = setTimeout(alignSearchBox, 150)
-}
-
-onMounted(() => {
-  // 邮件列表渲染后对齐
-  scheduleAlign()
-  // 列表可能延迟加载，多试几次
-  setTimeout(scheduleAlign, 800)
-  setTimeout(scheduleAlign, 1500)
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer)
-    resizeTimer = setTimeout(scheduleAlign, 200)
-  })
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', scheduleAlign)
-  clearTimeout(alignTimer)
-  clearTimeout(resizeTimer)
-})
+const searchVisible = ref(false)
 
 const roleDisplayName = computed(() => {
   return displayRoleName(userStore.user.role?.name, t)
@@ -335,10 +278,17 @@ function doSearch() {
   uiStore.globalSearchTick++
 }
 
-/** 手机端弹窗搜索：执行后关弹窗 */
-function doMobileSearch() {
+/** 弹窗搜索：执行后关弹窗 */
+function doDialogSearch() {
   doSearch()
-  mobileSearchVisible.value = false
+  searchVisible.value = false
+}
+
+/** 重置搜索：清空关键词并刷新列表，不关弹窗 */
+function doResetSearch() {
+  searchKeyword.value = ""
+  uiStore.globalSearchKeyword = ""
+  uiStore.globalSearchTick++
 }
 
 function changeAside() {
@@ -473,57 +423,18 @@ function formatName(email) {
   grid-template-columns: auto 1fr auto;
 }
 
-.header-search {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  min-width: 0;
-  width: 100%;
-  overflow: hidden;
-  /* 对齐前隐藏，避免从左边跳到中间的闪烁 */
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  &.aligned {
-    opacity: 1;
-  }
-  /* padding-left 由 JS 动态计算，对齐邮件标题 */
-
-  .search-box {
-    width: 100%;
-    max-width: 420px;
-    min-width: 0;
-    flex-shrink: 1;
-  }
-
-  @media (max-width: 768px) {
-    padding-left: 0;
-    .search-box {
-      max-width: none;
-      /* 手机端强制不溢出，避免盖住头像 */
-      width: 100%;
-      min-width: 0;
-    }
-  }
-}
-
-/* 手机端：隐藏内联搜索框，改用工具栏搜索按钮 + 弹窗 */
-.mobile-search-btn {
-  display: none;
+/* 搜索按钮（桌面+手机通用） */
+.search-btn {
   font-size: 22px;
 }
+
+/* 搜索弹窗：桌面端固定宽度，手机端自适应 */
+.search-dialog {
+  --el-dialog-width: 420px;
+}
 @media (max-width: 768px) {
-  .header-search {
-    display: none;
-  }
-  .mobile-search-btn {
-    display: flex;
-  }
-  /* 手机端 header 不再需要给搜索框留列，但保留 1fr 空列把工具栏顶到右边 */
-  .header {
-    grid-template-columns: auto auto 1fr auto;
-  }
-  .header.not-send {
-    grid-template-columns: auto 1fr auto;
+  .search-dialog {
+    --el-dialog-width: 90%;
   }
 }
 

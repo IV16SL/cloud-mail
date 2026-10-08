@@ -75,6 +75,8 @@ const en = {
 	passkeyLimit: 'Passkey limit reached',
 	passkeyNotYours: 'You are not allowed to manage this passkey',
 	pgpKeyNotFound: 'No PGP public key found for these recipients: {{msg}}',
+	pgpInvalidKey: 'Invalid PGP public key',
+	pgpKeyNotUsable: 'This PGP public key cannot be used for encryption',
 	bannedSend: 'You can only send emails to internal mailboxes',
 	onlyInternalSend: 'Your current role allows sending internal emails only',
 	noDomainPermAdd: "No permission to add this domain email",

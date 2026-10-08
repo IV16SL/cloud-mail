@@ -152,6 +152,52 @@ const pgpService = {
 		};
 	},
 
+	/**
+	 * 上传公钥并刷新缓存（App 生成钥匙后调用，避免等 7 天缓存过期）
+	 * 从钥匙的 User ID 里提取邮箱，只缓存钥匙里声明的邮箱，防止投毒
+	 */
+	async uploadKey(c, armored) {
+		if (!armored || !armored.includes('PGP PUBLIC KEY')) {
+			throw new BizError(t('pgpInvalidKey'));
+		}
+		let key;
+		try {
+			key = await openpgp.readKey({ armoredKey: armored.trim() });
+		} catch (e) {
+			throw new BizError(t('pgpInvalidKey'));
+		}
+		// 必须有加密子钥匙，否则传了也发不了密文
+		try {
+			await key.getEncryptionKey();
+		} catch (e) {
+			throw new BizError(t('pgpKeyNotUsable'));
+		}
+		const userIds = key.getUserIDs();
+		const emails = [...new Set(
+			userIds.map(uid => {
+				const m = uid.match(/<([^>]+)>/);
+				return m ? m[1].toLowerCase().trim() : null;
+			}).filter(e => e && verifyUtils.isEmail(e))
+		)];
+		if (emails.length === 0) {
+			throw new BizError(t('pgpInvalidKey'));
+		}
+		const fingerprint = key.getFingerprint();
+		const cached = {
+			found: true,
+			armored: armored.trim(),
+			fingerprint
+		};
+		const updated = [];
+		for (const email of emails) {
+			const cacheKey = this.cacheKey(email);
+			cached.email = email;
+			await c.env.kv.put(cacheKey, JSON.stringify(cached), { expirationTtl: KEY_TTL });
+			updated.push(email);
+		}
+		return { updated, fingerprint };
+	},
+
 	async readKeys(armoredKeys) {
 		return await Promise.all(armoredKeys.map(armored => openpgp.readKey({ armoredKey: armored })));
 	},

@@ -74,6 +74,8 @@ const zh = {
 	passkeyLimit: '通行密钥数量已达上限',
 	passkeyNotYours: '无权操作该通行密钥',
 	pgpKeyNotFound: '以下收件人未找到 PGP 公钥：{{msg}}',
+	pgpInvalidKey: '无效的 PGP 公钥',
+	pgpKeyNotUsable: '该 PGP 公钥无法用于加密',
 	bannedSend: '你没有邮件发送权限',
 	onlyInternalSend: '权限不足，只能给站内邮箱发件',
 	noDomainPermAdd: '你没有权限添加该域名邮箱',

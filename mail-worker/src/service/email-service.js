@@ -432,12 +432,15 @@ const emailService = {
 		html = this.imgReplace(html, imageDataList, r2Domain);
 
 		//封装数据保存到数据库
+		// PGP 加密时，存加密后的内容（站内收件人看到的也是密文，需用私钥解密）
+		const saveText = (pgpEncrypt && sendText !== text) ? sendText : text;
+		const saveHtml = (pgpEncrypt && sendHtml !== html) ? sendHtml : html;
 		const emailData = {};
 		emailData.sendEmail = accountRow.email;
 		emailData.name = name;
 		emailData.subject = subject;
-		emailData.content = html;
-		emailData.text = text;
+		emailData.content = saveHtml;
+		emailData.text = saveText;
 		emailData.accountId = accountId;
 		emailData.status = useCloudflareEmail ? emailConst.status.DELIVERED : emailConst.status.SENT;
 		emailData.type = emailConst.type.SEND;

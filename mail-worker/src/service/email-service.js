@@ -251,6 +251,28 @@ const emailService = {
 			.run();
 	},
 
+	async restore(c, params, userId) {
+		const { emailIds } = params;
+		const emailIdList = emailIds.split(',').map(Number);
+		await orm(c).update(email).set({ isDel: isDel.NORMAL }).where(
+			and(
+				eq(email.userId, userId),
+				inArray(email.emailId, emailIdList)))
+			.run();
+	},
+
+	async permanentDelete(c, params, userId) {
+		const { emailIds } = params;
+		const emailIdList = emailIds.split(',').map(Number);
+		const owned = await orm(c).select({ emailId: email.emailId }).from(email)
+			.where(and(eq(email.userId, userId), inArray(email.emailId, emailIdList)))
+			.all();
+		const ownedIds = owned.map(row => row.emailId);
+		if (ownedIds.length) {
+			await this.physicsDelete(c, { emailIds: ownedIds.join(',') });
+		}
+	},
+
 	receive(c, params, cidAttList, r2domain) {
 		params.content = this.imgReplace(params.content, cidAttList, r2domain)
 		return orm(c).insert(email).values({ ...params }).returning().get();

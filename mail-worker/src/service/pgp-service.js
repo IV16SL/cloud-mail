@@ -4,7 +4,7 @@ import KvConst from '../const/kv-const';
 import verifyUtils from '../utils/verify-utils';
 import { t } from '../i18n/i18n.js';
 
-const KEY_TTL = 60 * 60 * 24 * 7;
+const KEY_TTL = 60 * 60;
 const NEG_TTL = 60 * 60;
 
 const ZBASE32_ALPHABET = 'ybndrfg8ejkmcpqxot1uwisza345h769';

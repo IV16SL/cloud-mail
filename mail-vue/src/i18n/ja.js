@@ -3,7 +3,6 @@ const ja = {
     drafts: '下書き',
     sent: '送信済み',
     starred: 'スター付き',
-    deleted: '削除済み',
     settings: '設定',
     analytics: '統計',
     allUsers: '全ユーザー',

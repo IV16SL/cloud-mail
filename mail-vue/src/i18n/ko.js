@@ -3,7 +3,6 @@ const ko = {
     drafts: '임시보관함',
     sent: '보낸편지함',
     starred: '별표편지함',
-    deleted: '삭제됨',
     settings: '설정',
     analytics: '통계',
     allUsers: '전체 사용자',

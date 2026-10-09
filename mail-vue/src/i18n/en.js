@@ -3,7 +3,6 @@ const en = {
     drafts: 'Drafts',
     sent: 'Sent',
     starred: 'Starred',
-    deleted: 'Deleted',
     settings: 'Settings',
     analytics: 'Analytics',
     allUsers: 'All Users',

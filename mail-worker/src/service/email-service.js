@@ -32,7 +32,10 @@ const emailService = {
 		let { emailId, type, accountId, size, timeSort, allReceive, full, keyword } = params;
 
 		size = Number(size);
-		type = Number(type);
+		// type='delete' 是字符串，不要转 Number
+		if (type !== 'delete') {
+			type = Number(type);
+		}
 		emailId = Number(emailId) || 0;
 		timeSort = Number(timeSort);
 		accountId = Number(accountId);
@@ -157,12 +160,15 @@ const emailService = {
 	},
 
 	emailListFilters({ userId, accountId, type, allReceive, emailId, timeSort, keyword, withCursor = true }) {
+		const isDelete = type === 'delete';
 		const conditions = [
 			eq(email.userId, userId),
-			eq(email.type, type),
-			eq(email.isDel, isDel.NORMAL),
+			eq(email.isDel, isDelete ? isDel.DELETE : isDel.NORMAL),
 			eq(account.isDel, isDel.NORMAL),
 		];
+		if (!isDelete) {
+			conditions.push(eq(email.type, type));
+		}
 		if (!allReceive) {
 			conditions.push(eq(email.accountId, accountId));
 		}

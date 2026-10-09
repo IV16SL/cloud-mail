@@ -42,7 +42,7 @@ const emailService = {
 		allReceive = Number(allReceive);
 		full = Number(full);
 
-		if (isNaN(type)) {
+		if (type !== 'delete' && isNaN(type)) {
 			type = 0;
 		}
 

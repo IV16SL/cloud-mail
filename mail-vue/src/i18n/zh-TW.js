@@ -3,6 +3,7 @@ const zhTW = {
     drafts: '草稿匣',
     sent: '已傳送',
     starred: '星號郵件',
+    deleted: '已刪除',
     settings: '個人設定',
     analytics: '分析頁面',
     allUsers: '使用者清單',

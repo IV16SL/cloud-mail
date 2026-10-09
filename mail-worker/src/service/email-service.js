@@ -253,7 +253,7 @@ const emailService = {
 
 	async restore(c, params, userId) {
 		const { emailIds } = params;
-		const emailIdList = emailIds.split(',').map(Number);
+		const emailIdList = Array.isArray(emailIds) ? emailIds.map(Number) : String(emailIds).split(',').map(Number);
 		await orm(c).update(email).set({ isDel: isDel.NORMAL }).where(
 			and(
 				eq(email.userId, userId),

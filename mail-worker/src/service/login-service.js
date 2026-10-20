@@ -240,7 +240,7 @@ const loginService = {
 		// 老哈希（单轮 SHA-256）透明升级到 PBKDF2：仅密码登录成功时执行，失败不影响登录
 		if (!noVerifyPwd && cryptoUtils.needsRehash(userRow.password)) {
 			try {
-				await userService.resetPassword(c, { password }, userRow.userId);
+				await userService.updatePasswordHash(c, userRow.userId, password);
 			} catch (e) {
 				console.warn(`密码哈希升级失败：${e.message}`);
 			}

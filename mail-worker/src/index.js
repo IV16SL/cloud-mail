@@ -27,7 +27,7 @@ export default {
 			if (fingerprints.length === 0) {
 				return new Response(JSON.stringify({ message: 'assetlinks not configured' }), {
 					status: 404,
-					headers: { 'Content-Type': 'application/json' }
+					headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
 				});
 			}
 			return new Response(JSON.stringify([{

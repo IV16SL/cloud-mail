@@ -371,7 +371,6 @@ function formatName(email) {
   height: 100%;
   gap: 10px;
   grid-template-columns: auto auto 1fr auto;
-  position: relative;
 }
 
 .header.not-send {

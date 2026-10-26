@@ -22,7 +22,7 @@ const routes = [
                 }
             },
             {
-                path: '/:mailbox(inbox|starred|sent|all-mail)/messages',
+                path: '/:mailbox(inbox|starred|sent|all-mail|deleted)/messages',
                 name: 'content',
                 component: () => import('@/views/content/index.vue'),
                 meta: {

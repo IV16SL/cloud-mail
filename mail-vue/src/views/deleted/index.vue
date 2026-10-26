@@ -30,13 +30,13 @@ function jumpContent(email) {
   emailStore.contentData.delType = 'logic'
   emailStore.contentData.showStar = false
   emailStore.contentData.showReply = false
-  router.push('/mail')
+  router.push({name: 'content', params: {mailbox: 'deleted'}})
 }
 
 function getEmailList(emailId, size) {
   const accountId = accountStore.currentAccountId
   if (!accountId) return Promise.resolve([])
-  return emailList(accountId, 0, emailId, 0, size, 'delete', 0, null)
+  return emailList(accountId, 0, emailId, 0, size, 'delete', 0, {})
 }
 
 function handleRestore(email) {

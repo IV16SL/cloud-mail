@@ -1,7 +1,7 @@
 import http from '@/axios/index.js';
 
 export function emailList(accountId, allReceive, emailId, timeSort, size, type, full, searchParams = {}) {
-    const {type: searchType, text, startDate, endDate} = searchParams
+    const {type: searchType, text, startDate, endDate} = searchParams || {}
     return http.get('/email/list', {params: {accountId, allReceive, emailId, timeSort, size, type, full, searchType, text, startDate, endDate}})
 }
 

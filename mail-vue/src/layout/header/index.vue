@@ -371,22 +371,6 @@ function formatName(email) {
   height: 100%;
   gap: 10px;
   grid-template-columns: auto auto 1fr auto;
-  position: relative;
-}
-
-@media (max-width: 767px) {
-  .header {
-    display: flex;
-    align-items: center;
-  }
-
-  .header-btn {
-    flex: 1;
-  }
-
-  .toolbar {
-    flex-shrink: 0;
-  }
 }
 
 .header.not-send {

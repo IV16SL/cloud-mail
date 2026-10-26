@@ -145,8 +145,6 @@ const email = computed(() => emailStore.contentData.email || {
   text: '',
   recipient: '[]',
 })
-const showPreview = ref(false)
-const srcList = reactive([])
 const decryptedText = ref('')
 const decryptLoading = ref(false)
 

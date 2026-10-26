@@ -8,7 +8,7 @@
                :show-account-icon="false"
   >
     <template #first>
-      <Icon v-if="scroll.selectedMailIds?.length > 0" class="icon" icon="mdi:restore" width="20" height="20" @click="handleRestoreSelected"/>
+      <Icon v-if="scroll.selectedMailIds?.length > 0" class="icon" icon="mdi:file-restore-outline" width="20" height="20" @click="handleRestoreSelected"/>
     </template>
   </emailScroll>
 </template>

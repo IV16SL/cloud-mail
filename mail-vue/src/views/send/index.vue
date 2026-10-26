@@ -23,7 +23,7 @@ import {useSendStore} from "@/store/send.js";
 import emailScroll from "@/components/email-scroll/index.vue"
 import {emailList, emailDelete} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
-import {defineOptions, onMounted, ref, watch} from "vue";
+import {defineOptions, onMounted, reactive, ref, watch} from "vue";
 import router from "@/router/index.js";
 
 defineOptions({

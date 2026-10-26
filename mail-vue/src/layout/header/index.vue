@@ -1,18 +1,38 @@
 <template>
-  <div class="header" :class="!hasPerm('email:send') ? 'not-send' : ''">
+  <div class="header">
     <div class="header-btn">
       <hanburger @click="changeAside"></hanburger>
       <span class="breadcrumb-item">{{ $t(route.meta.title) }}</span>
     </div>
-    <div v-perm="'email:send'" class="writer-box" @click="openSend">
-      <div class="writer">
-        <Icon icon="material-symbols:edit-outline-sharp" width="22" height="22"/>
-      </div>
+    <div v-perm="'email:send'" class="writer-box">
+      <el-button
+        class="writer"
+        size="default"
+        :aria-label="$t('compose')"
+        @click="openSend"
+      >
+        <el-icon :size="21">
+          <Icon icon="material-symbols:edit-outline-sharp"/>
+        </el-icon>
+      </el-button>
     </div>
+    <email-search
+      v-if="showInboxSearch"
+      :store="emailStore"
+      :search-options="inboxSearchOptions"
+      :class="{ 'account-show': accountPanelShow }"
+      @search="returnToList('email')"
+      @reset="returnToList('email')"
+    />
+    <email-search
+      v-else-if="showSentSearch"
+      :store="sendStore"
+      :search-options="sentSearchOptions"
+      :class="{ 'account-show': accountPanelShow }"
+      @search="returnToList('send')"
+      @reset="returnToList('send')"
+    />
     <div class="toolbar">
-      <div class="search-btn icon-item" @click="searchVisible = true">
-        <Icon icon="iconoir:search"/>
-      </div>
       <div v-if="uiStore.dark" class="sun-icon icon-item" @click="openDark($event)">
         <Icon icon="mingcute:sun-fill"/>
       </div>
@@ -74,30 +94,6 @@
         </template>
       </el-dropdown>
     </div>
-    <!-- 搜索弹窗 -->
-    <el-dialog
-      v-model="searchVisible"
-      title="搜索邮件"
-      width="420px"
-      :show-close="true"
-      class="search-dialog"
-    >
-      <el-input
-        v-model="searchKeyword"
-        placeholder="搜索主题、发件人"
-        clearable
-        @keyup.enter="doDialogSearch"
-      >
-        <template #prefix>
-          <Icon icon="iconoir:search" width="16" height="16"/>
-        </template>
-      </el-input>
-      <template #footer>
-        <el-button @click="doResetSearch">重置</el-button>
-        <el-button @click="searchVisible = false">取消</el-button>
-        <el-button type="primary" @click="doDialogSearch">搜索</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -109,28 +105,58 @@ import {Icon} from "@iconify/vue";
 import {useUiStore} from "@/store/ui.js";
 import {useUserStore} from "@/store/user.js";
 import {useRoute} from "vue-router";
-import {computed, ref, onMounted, onUnmounted} from "vue";
+import {computed, ref} from "vue";
 import {useSettingStore} from "@/store/setting.js";
 import {hasPerm} from "@/perm/perm.js"
 import {useI18n} from "vue-i18n";
 import {setExtend} from "@/utils/day.js"
 import {toDayjsLocale} from "@/utils/day.js"
 import {displayRoleName} from "@/utils/role-utils.js"
+import emailSearch from '@/components/email-search/index.vue'
+import {useEmailStore} from '@/store/email.js'
+import {useSendStore} from '@/store/send.js'
 
 const {t} = useI18n();
 const route = useRoute();
 const settingStore = useSettingStore();
 const userStore = useUserStore();
 const uiStore = useUiStore();
+const emailStore = useEmailStore()
+const sendStore = useSendStore()
 const logoutLoading = ref(false)
 const userInfoShow = ref(false)
 const userinfoRef = ref({})
-const searchKeyword = ref('')
-const searchVisible = ref(false)
 
 const roleDisplayName = computed(() => {
   return displayRoleName(userStore.user.role?.name, t)
 })
+const inboxSearchOptions = computed(() => [
+  {label: t('titleDesc'), type: 'subject'},
+  {label: t('searchSummaryContent'), type: 'content'},
+  {label: t('sender'), type: 'sender'},
+  {label: t('searchSenderAddress'), type: 'senderAddress'},
+])
+const sentSearchOptions = computed(() => [
+  {label: t('titleDesc'), type: 'subject'},
+  {label: t('searchSummaryContent'), type: 'content'},
+  {label: t('searchRecipientAddress'), type: 'recipientAddress'},
+])
+const accountPanelShow = computed(() => uiStore.accountShow && hasPerm('account:query'))
+const showInboxSearch = computed(() =>
+  route.meta.name === 'email' || isMailboxDetail('inbox')
+)
+const showSentSearch = computed(() =>
+  route.meta.name === 'send' || isMailboxDetail('sent')
+)
+
+function isMailboxDetail(mailbox) {
+  return route.meta.name === 'content' && route.params.mailbox === mailbox
+}
+
+function returnToList(listName) {
+  if (route.meta.name !== 'content') return
+  router.push({name: listName})
+}
 
 const accountCount = computed(() => {
   return userStore.user.role.accountCount
@@ -224,71 +250,8 @@ function changeLang(lang) {
   settingStore.lang = lang
 }
 
-function openNotice() {
-  uiStore.showNotice()
-}
-
-function openDark(e) {
-
-  const nextIsDark = !uiStore.dark
-  const root = document.documentElement
-
-  if (!document.startViewTransition) {
-    switchDark(nextIsDark, root);
-    return
-  }
-
-  const x = e.clientX
-  const y = e.clientY
-
-  const maxX = Math.max(x, window.innerWidth - x)
-  const maxY = Math.max(y, window.innerHeight - y)
-  const endRadius = Math.hypot(maxX, maxY)
-
-  // 标记切换目标，供 CSS 选择器使用
-  root.setAttribute('data-theme-to', nextIsDark ? 'dark' : 'light')
-  root.style.setProperty('--vt-x', `${x}px`)
-  root.style.setProperty('--vt-y', `${y}px`)
-  root.style.setProperty('--vt-end-radius', `${endRadius + 10}px`)
-
-  const transition = document.startViewTransition(() => {
-    switchDark(nextIsDark, root);
-  })
-
-  transition.finished.finally(() => {
-    // 清理标记
-    root.removeAttribute('data-theme-to')
-  })
-}
-
-function switchDark(nextIsDark, root) {
-  root.setAttribute('class', nextIsDark ? 'dark' : '')
-  const metaTag = document.getElementById('theme-color-meta');
-  const isMobile =  !window.matchMedia("(pointer: fine) and (hover: hover)").matches;
-  metaTag.setAttribute('content', nextIsDark ? (isMobile ? '#141414' : '#000000') : (isMobile ? '#191A23' : '#F1F1F1'));
-  uiStore.dark = nextIsDark
-}
-
 function openSend() {
   uiStore.writerRef.open()
-}
-
-function doSearch() {
-  uiStore.globalSearchKeyword = searchKeyword.value.trim()
-  uiStore.globalSearchTick++
-}
-
-/** 弹窗搜索：执行后关弹窗 */
-function doDialogSearch() {
-  doSearch()
-  searchVisible.value = false
-}
-
-/** 重置搜索：清空关键词并刷新列表，不关弹窗 */
-function doResetSearch() {
-  searchKeyword.value = ""
-  uiStore.globalSearchKeyword = ""
-  uiStore.globalSearchTick++
 }
 
 function changeAside() {
@@ -439,27 +402,30 @@ function formatName(email) {
 }
 
 .writer-box {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 5px;
+  display: none;
 
-  .writer {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    color: #ffffff;
-    background: linear-gradient(135deg, #1890ff, #3a80dd);
-    transition: all 0.3s ease;
+  @media (max-width: 767px) {
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    margin-left: 0;
+    flex-shrink: 0;
 
-    .writer-text {
-      margin-left: 15px;
-      font-size: 14px;
-      font-weight: bold;;
+    .writer {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      box-shadow: none;
+      --el-button-bg-color: transparent;
+      --el-button-border-color: transparent;
+      --el-button-hover-bg-color: transparent;
+      --el-button-hover-border-color: transparent;
+      --el-button-active-bg-color: transparent;
+      --el-button-active-border-color: transparent;
+      --el-button-outline-color: transparent;
     }
   }
 }
@@ -483,6 +449,7 @@ function formatName(email) {
 .toolbar {
   display: flex;
   justify-content: end;
+  align-items: center;
   gap: 15px;
   @media (max-width: 767px) {
     gap: 10px;
@@ -503,29 +470,17 @@ function formatName(email) {
     background: var(--base-fill);
   }
 
-  .notice {
-    font-size: 22px;
-    margin-right: 4px;
-  }
-
-  .dark-icon {
-    font-size: 20px;
-  }
-
-  .sun-icon {
-    font-size: 24px;
-  }
-
   .avatar {
     display: flex;
     align-items: center;
     cursor: pointer;
 
     .avatar-text {
+      box-sizing: border-box;
       background: var(--el-bg-color);
       color: var(--el-text-color-primary);
-      height: 30px;
-      width: 30px;
+      height: 32px;
+      width: 32px;
       display: flex;
       justify-content: center;
       align-items: center;

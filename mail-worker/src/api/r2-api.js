@@ -15,38 +15,17 @@ import fileUtils from '../utils/file-utils';
 // 那是一次前后端一起动的改造，本轮未做。
 app.get('/oss/*', async (c) => {
 	const key = c.req.path.split('/oss/')[1];
-
-	if (!key) {
-		return c.text('Not Found', 404);
+	const resp = await r2Service.toObjResp(c, key);
+	if (!resp) {
+		return c.notFound();
 	}
-
-	const obj = await r2Service.getObj(c, key);
-
-	if (!obj || obj.status === 404) {
-		return c.text('Not Found', 404);
+	// fork 安全加固（保留）：HTML/SVG 一律强制下载，避免在本站 origin 下被当作页面执行（存储型 XSS）
+	const contentType = resp.headers.get('Content-Type') || 'application/octet-stream';
+	if (fileUtils.isDangerousInlineType(contentType)) {
+		const headers = new Headers(resp.headers);
+		headers.set('Content-Disposition', 'attachment');
+		headers.set('X-Content-Type-Options', 'nosniff');
+		return new Response(resp.body, { headers, status: resp.status });
 	}
-
-	// 三种存储后端返回的对象形态不一样：KV/S3 是 Response（头在 headers 上），
-	// R2 是 R2ObjectBody（头在 httpMetadata 上）。这里统一取一次 ——
-	// 只读 httpMetadata 的话，KV/S3 下 Content-Type 会退化成 octet-stream，
-	// 邮件里的内嵌图片就渲染不出来了。
-	const contentType = obj.httpMetadata?.contentType
-		|| obj.headers?.get('Content-Type')
-		|| 'application/octet-stream';
-
-	const rawDisposition = obj.httpMetadata?.contentDisposition
-		|| obj.headers?.get('Content-Disposition');
-
-	// HTML/SVG 一律强制下载，避免在本站 origin 下被当作页面执行（存储型 XSS）
-	const contentDisposition = fileUtils.isDangerousInlineType(contentType)
-		? 'attachment'
-		: rawDisposition;
-
-	const headers = new Headers({
-		'Content-Type': contentType,
-		'X-Content-Type-Options': 'nosniff'
-	});
-	if (contentDisposition) headers.set('Content-Disposition', contentDisposition);
-
-	return new Response(obj.body, { headers });
+	return resp;
 });

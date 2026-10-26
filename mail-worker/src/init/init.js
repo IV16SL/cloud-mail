@@ -36,6 +36,7 @@ const dbInit = {
 		await this.v3_5DB(c);
 		await this.v3_6DB(c);
 		await this.v3_7DB(c);
+		await this.v3_8DB(c);
 		await settingService.refresh(c);
 		return c.text('success');
 	},
@@ -49,6 +50,15 @@ const dbInit = {
 				console.warn(`跳过字段：${e.message}`);
 			}
 		}
+	},
+
+	async v3_8DB(c) {
+		// 合并上游 v3.4.0：email.sender_email（收件代发地址展示用）。
+		// 注意：上游把这个字段放在 v3_4DB，但 fork 的 v3_4DB 已是 passkey 表，
+		// 故改号为 v3_8DB，避免覆盖。
+		await this.addColumns(c, [
+			['email', 'sender_email', `TEXT NOT NULL DEFAULT ''`],
+		]);
 	},
 
 	async v3_6DB(c) {

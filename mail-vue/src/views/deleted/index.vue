@@ -8,7 +8,7 @@
                :show-account-icon="false"
   >
     <template #first>
-      <Icon v-if="scroll.selectedMailIds?.length > 0" class="icon" icon="uiw:rollback" width="20" height="20" @click="handleRestoreSelected"/>
+      <Icon v-if="scroll.selectedMailIds?.length > 0" class="icon" icon="uiw:rollback" width="16" height="16" @click="handleRestoreSelected"/>
     </template>
   </emailScroll>
 </template>

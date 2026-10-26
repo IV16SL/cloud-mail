@@ -3,7 +3,7 @@
     <div class="header-actions">
       <Icon class="icon" icon="material-symbols-light:arrow-back-ios-new" width="20" height="20" @click="handleBack"/>
       <Icon v-perm="'email:delete'" class="icon" icon="uiw:delete" width="16" height="16" @click="handleDelete"/>
-      <Icon v-if="email.isDel === 1 || route.params.mailbox === 'deleted'" class="icon" icon="uiw:rollback" width="16" height="16" @click="handleRestore"/>
+      <Icon v-if="email.isDel === 1" class="icon" icon="mdi:file-restore-outline" width="20" height="20" @click="handleRestore"/>
       <span class="star" v-if="emailStore.contentData.showStar">
         <Icon class="icon" @click="changeStar" v-if="email.isStar" icon="fluent-color:star-16" width="20" height="20"/>
         <Icon class="icon" @click="changeStar" v-else icon="solar:star-line-duotone" width="18.5" height="18.5"/>
@@ -107,7 +107,7 @@
 <script setup>
 import ShadowHtml from '@/components/shadow-html/index.vue'
 import {computed, reactive, ref, watch, onMounted, onUnmounted, nextTick} from "vue";
-import {useRouter, useRoute} from 'vue-router'
+import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {emailDelete, emailRead, emailRestore} from "@/request/email.js";
 import {Icon} from "@iconify/vue";
@@ -131,7 +131,6 @@ const settingStore = useSettingStore();
 const accountStore = useAccountStore();
 const emailStore = useEmailStore();
 const router = useRouter()
-const route = useRoute()
 const sendNameRef = ref(null)
 const senderWrapped = ref(false)
 let senderResizeObserver = null

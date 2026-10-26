@@ -4,7 +4,7 @@
   <div class="box">
     <div class="container">
       <div class="title">{{$t('profile')}}</div>
-      <div class="item">
+      <div class="item setting-row">
         <div>{{$t('avatar')}}</div>
         <div class="avatar-row">
           <div class="avatar-preview">
@@ -48,19 +48,19 @@
           <el-button type="primary" @click="pwdShow = true">{{$t('changePwdBtn')}}</el-button>
         </div>
       </div>
-      <div class="item">
+      <div class="item setting-row">
         <div>{{$t('passkey')}}</div>
         <div>
           <el-button type="primary" @click="openPasskey">{{$t('passkeyManage')}}</el-button>
         </div>
       </div>
-      <div class="item">
+      <div class="item setting-row">
         <div>{{$t('pgpPrivateKey')}}</div>
         <div>
           <el-button type="primary" @click="openPgpKey">{{$t('pgpManageKey')}}</el-button>
         </div>
       </div>
-      <div class="item">
+      <div class="item setting-row">
         <div>{{$t('totp')}}</div>
         <div style="display: flex; align-items: center; gap: 10px;">
           <el-button type="primary" @click="openTotp">{{$t('totpManage')}}</el-button>
@@ -68,7 +68,7 @@
           <span v-else style="color: var(--el-text-color-secondary); font-size: 13px;">{{$t('totpDisabled')}}</span>
         </div>
       </div>
-      <div class="item" v-if="oauthProviders.length > 0">
+      <div class="item setting-row" v-if="oauthProviders.length > 0">
         <div>{{$t('oauthBind')}}</div>
         <div class="oauth-bind-list">
           <div v-for="p in oauthProviders" :key="p.key" class="oauth-bind-item">

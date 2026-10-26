@@ -6,7 +6,11 @@
                @jump="jumpContent"
                actionLeft="6px"
                :show-account-icon="false"
-  />
+  >
+    <template #first>
+      <Icon v-if="scroll.selectedMailIds?.length > 0" class="icon" icon="mdi:restore" width="20" height="20" @click="handleRestoreSelected"/>
+    </template>
+  </emailScroll>
 </template>
 
 <script setup>
@@ -15,12 +19,15 @@ import {emailPermanentDelete, emailList, emailRestore} from "@/request/email.js"
 import {useEmailStore} from "@/store/email.js";
 import {useAccountStore} from "@/store/account.js";
 import {defineOptions, ref} from "vue";
+import {Icon} from "@iconify/vue";
+import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
 
 defineOptions({
   name: 'deleted'
 })
 
+const {t} = useI18n();
 const scroll = ref({})
 const emailStore = useEmailStore();
 const accountStore = useAccountStore();
@@ -42,6 +49,19 @@ function getEmailList(emailId, size) {
 function handleRestore(email) {
   emailRestore([email.emailId]).then(() => {
     scroll.value.deleteEmail([email.emailId])
+  })
+}
+
+function handleRestoreSelected() {
+  const ids = scroll.value.selectedMailIds
+  if (!ids?.length) return
+  emailRestore(ids).then(() => {
+    ElMessage({
+      message: t('restoreSuccessMsg'),
+      type: 'success',
+      plain: true
+    })
+    scroll.value.deleteEmail(ids)
   })
 }
 

@@ -355,6 +355,7 @@ const queryParam = reactive({
   size: 50
 });
 
+const selectedMailIds = computed(() => getSelectedMailsIds());
 defineExpose({
   refreshList,
   deleteEmail,
@@ -786,7 +787,6 @@ function getSelectedMailsIds() {
   return emailList.filter(item => item.checked).map(item => item.emailId);
 }
 
-const selectedMailIds = computed(() => getSelectedMailsIds());
 
 function getSelectedDraftsIds() {
   return emailList.filter(item => item.checked).map(item => item.draftId);

@@ -364,8 +364,7 @@ defineExpose({
   firstLoad,
   latestEmail,
   noLoading,
-  total,
-  selectedMailIds
+  total
 })
 
 onActivated(() => {
@@ -785,8 +784,6 @@ function handleCheckAllChange(val) {
 function getSelectedMailsIds() {
   return emailList.filter(item => item.checked).map(item => item.emailId);
 }
-
-const selectedMailIds = computed(() => getSelectedMailsIds());
 
 function getSelectedDraftsIds() {
   return emailList.filter(item => item.checked).map(item => item.draftId);

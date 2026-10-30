@@ -464,7 +464,7 @@ function formateReceive(recipient) {
 function parseAddrList(val) {
   if (!val) return []
   try {
-    const arr = JSON.parse(val)
+    const arr = typeof val === 'string' ? JSON.parse(val) : val
     return Array.isArray(arr) ? arr : []
   } catch {
     return []
@@ -476,7 +476,10 @@ function hasAddrList(val) {
 }
 
 function formatAddrList(val) {
-  return parseAddrList(val).join(', ')
+  return parseAddrList(val).map(item => {
+    if (typeof item === 'string') return item
+    return item?.address || item?.email || ''
+  }).filter(Boolean).join(', ')
 }
 
 function changeStar() {
